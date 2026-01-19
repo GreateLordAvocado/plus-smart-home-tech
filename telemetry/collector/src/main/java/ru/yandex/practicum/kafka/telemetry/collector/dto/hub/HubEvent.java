@@ -25,7 +25,6 @@ public abstract class HubEvent {
     @NotBlank
     private String hubId;
 
-    @NotNull
     private Instant timestamp;
 
     @NotNull
@@ -34,13 +33,15 @@ public abstract class HubEvent {
     public String getHubId() {
         return hubId;
     }
-    public void setHubId(String hubId) {
-        this.hubId = hubId;
-    }
 
     public Instant getTimestamp() {
         return timestamp;
     }
+
+    public void setHubId(String hubId) {
+        this.hubId = hubId;
+    }
+
     public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
     }

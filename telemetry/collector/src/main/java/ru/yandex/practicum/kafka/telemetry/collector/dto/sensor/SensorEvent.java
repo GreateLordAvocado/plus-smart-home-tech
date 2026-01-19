@@ -1,8 +1,8 @@
 package ru.yandex.practicum.kafka.telemetry.collector.dto.sensor;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -29,7 +29,6 @@ public abstract class SensorEvent {
     @NotBlank
     private String hubId;
 
-    @NotNull
     private Instant timestamp;
 
     @NotNull
@@ -38,20 +37,23 @@ public abstract class SensorEvent {
     public String getId() {
         return id;
     }
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public String getHubId() {
         return hubId;
-    }
-    public void setHubId(String hubId) {
-        this.hubId = hubId;
     }
 
     public Instant getTimestamp() {
         return timestamp;
     }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setHubId(String hubId) {
+        this.hubId = hubId;
+    }
+
     public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
     }

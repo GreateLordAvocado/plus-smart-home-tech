@@ -33,7 +33,7 @@ class EventsControllerTest {
         mvc.perform(post("/events/sensors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -51,6 +51,6 @@ class EventsControllerTest {
         mvc.perform(post("/events/hubs")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isOk());
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.collector.dto.hub.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
+import java.time.Instant;
 import java.util.List;
 
 @Component
@@ -20,7 +21,11 @@ public class HubEventAvroMapper {
 
         HubEventAvro avro = new HubEventAvro();
         avro.setHubId(dto.getHubId());
-        avro.setTimestamp(dto.getTimestamp().toEpochMilli());
+        avro.setTimestamp(
+                dto.getTimestamp() != null
+                        ? dto.getTimestamp().toEpochMilli()
+                        : Instant.now().toEpochMilli()
+        );
         avro.setPayload(payload);
         return avro;
     }

@@ -29,13 +29,13 @@ public class EventsController {
     public ResponseEntity<Void> collectSensorEvent(@Valid @RequestBody SensorEvent event) {
         var avro = sensorMapper.toAvro(event);
         kafkaProducer.sendSensor(avro);
-        return ResponseEntity.accepted().build();
+        return ResponseEntity.ok().build(); // 200 OK по спецификации
     }
 
     @PostMapping("/hubs")
     public ResponseEntity<Void> collectHubEvent(@Valid @RequestBody HubEvent event) {
         var avro = hubMapper.toAvro(event);
         kafkaProducer.sendHub(avro);
-        return ResponseEntity.accepted().build();
+        return ResponseEntity.ok().build(); // 200 OK по спецификации
     }
 }
