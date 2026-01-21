@@ -4,3 +4,7 @@ collector:
     topics:
       sensors: telemetry.sensors.v1
       hubs: telemetry.hubs.v1
+    producer:
+      acks: "1"
+      linger-ms: 5
+      batch-size: 32768

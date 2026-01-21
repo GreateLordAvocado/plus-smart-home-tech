@@ -13,6 +13,12 @@ import java.util.Map;
 @Configuration
 public class KafkaProducerConfig {
 
+    private final CollectorKafkaProperties properties;
+
+    public KafkaProducerConfig(CollectorKafkaProperties properties) {
+        this.properties = properties;
+    }
+
     @Bean
     public ProducerFactory<String, byte[]> producerFactory() {
         return new DefaultKafkaProducerFactory<>(producerConfigs());
@@ -25,13 +31,14 @@ public class KafkaProducerConfig {
 
     private Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, properties.getBootstrapServers());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 5);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 32768);
+        props.put(ProducerConfig.ACKS_CONFIG, properties.getProducer().getAcks());
+        props.put(ProducerConfig.LINGER_MS_CONFIG, properties.getProducer().getLingerMs());
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProducer().getBatchSize());
 
         return props;
     }
