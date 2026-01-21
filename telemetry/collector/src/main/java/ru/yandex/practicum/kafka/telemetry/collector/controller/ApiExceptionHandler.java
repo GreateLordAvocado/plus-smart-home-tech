@@ -1,5 +1,7 @@
 package ru.yandex.practicum.kafka.telemetry.collector.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,8 +14,12 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
+        log.warn("Validation failed: {}", e.getMessage(), e);
+
         Map<String, String> fields = new HashMap<>();
         for (FieldError fe : e.getBindingResult().getFieldErrors()) {
             fields.put(fe.getField(), fe.getDefaultMessage());
@@ -22,6 +28,7 @@ public class ApiExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Validation failed");
         body.put("fields", fields);
+
         return ResponseEntity.badRequest().body(body);
     }
 }
