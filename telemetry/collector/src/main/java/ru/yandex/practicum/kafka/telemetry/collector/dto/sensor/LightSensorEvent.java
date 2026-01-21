@@ -1,7 +1,9 @@
 package ru.yandex.practicum.kafka.telemetry.collector.dto.sensor;
 
 import jakarta.validation.constraints.Min;
+import lombok.Data;
 
+@Data
 public class LightSensorEvent extends SensorEvent {
 
     @Min(0)
@@ -9,22 +11,6 @@ public class LightSensorEvent extends SensorEvent {
 
     @Min(0)
     private int luminosity;
-
-    public int getLinkQuality() {
-        return linkQuality;
-    }
-
-    public void setLinkQuality(int linkQuality) {
-        this.linkQuality = linkQuality;
-    }
-
-    public int getLuminosity() {
-        return luminosity;
-    }
-
-    public void setLuminosity(int luminosity) {
-        this.luminosity = luminosity;
-    }
 
     @Override
     public SensorEventType getType() {

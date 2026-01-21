@@ -1,15 +1,11 @@
 package ru.yandex.practicum.kafka.telemetry.collector.dto.sensor;
 
+import lombok.Data;
+
+@Data
 public class SwitchSensorEvent extends SensorEvent {
 
     private boolean state;
-
-    public boolean isState() {
-        return state;
-    }
-    public void setState(boolean state) {
-        this.state = state;
-    }
 
     @Override
     public SensorEventType getType() {
