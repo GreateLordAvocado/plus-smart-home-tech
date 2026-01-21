@@ -71,9 +71,15 @@ public class HubEventAvroMapper {
     }
 
     private Object mapUnionValue(JsonNode value) {
-        if (value == null || value.isNull()) return null;
-        if (value.isBoolean()) return value.booleanValue();
-        if (value.isInt() || value.isLong()) return value.intValue();
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isBoolean()) {
+            return value.booleanValue();
+        }
+        if (value.isInt() || value.isLong()) {
+            return value.intValue();
+        }
         throw new IllegalArgumentException("Unsupported condition value type: " + value.getNodeType());
     }
 
