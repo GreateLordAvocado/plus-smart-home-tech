@@ -1,9 +1,13 @@
 package ru.yandex.practicum.kafka.telemetry.collector.dto.sensor;
 
 import jakarta.validation.constraints.Min;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
-@Data
+@Getter
+@Setter
+@ToString(callSuper = true)
 public class MotionSensorEvent extends SensorEvent {
 
     @Min(0)

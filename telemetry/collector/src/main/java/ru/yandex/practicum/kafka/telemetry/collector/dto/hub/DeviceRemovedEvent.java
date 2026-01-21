@@ -1,9 +1,13 @@
 package ru.yandex.practicum.kafka.telemetry.collector.dto.hub;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
-@Data
+@Getter
+@Setter
+@ToString(callSuper = true)
 public class DeviceRemovedEvent extends HubEvent {
 
     @NotBlank
