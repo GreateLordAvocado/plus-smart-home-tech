@@ -19,42 +19,42 @@ public class HubEventAvroMapper {
             case SCENARIO_REMOVED -> toScenarioRemoved((ScenarioRemovedEvent) dto);
         };
 
-        HubEventAvro avro = new HubEventAvro();
-        avro.setHubId(dto.getHubId());
-        avro.setTimestamp(
-                dto.getTimestamp() != null
-                        ? dto.getTimestamp().toEpochMilli()
-                        : Instant.now().toEpochMilli()
-        );
-        avro.setPayload(payload);
-        return avro;
+        long ts = dto.getTimestamp() != null
+                ? dto.getTimestamp().toEpochMilli()
+                : Instant.now().toEpochMilli();
+
+        return HubEventAvro.newBuilder()
+                .setHubId(dto.getHubId())
+                .setTimestamp(ts)
+                .setPayload(payload)
+                .build();
     }
 
     private DeviceAddedEventAvro toDeviceAdded(DeviceAddedEvent e) {
-        DeviceAddedEventAvro a = new DeviceAddedEventAvro();
-        a.setId(e.getId());
-        a.setType(DeviceTypeAvro.valueOf(e.getDeviceType().name()));
-        return a;
+        return DeviceAddedEventAvro.newBuilder()
+                .setId(e.getId())
+                .setType(DeviceTypeAvro.valueOf(e.getDeviceType().name()))
+                .build();
     }
 
     private DeviceRemovedEventAvro toDeviceRemoved(DeviceRemovedEvent e) {
-        DeviceRemovedEventAvro a = new DeviceRemovedEventAvro();
-        a.setId(e.getId());
-        return a;
+        return DeviceRemovedEventAvro.newBuilder()
+                .setId(e.getId())
+                .build();
     }
 
     private ScenarioAddedEventAvro toScenarioAdded(ScenarioAddedEvent e) {
-        ScenarioAddedEventAvro a = new ScenarioAddedEventAvro();
-        a.setName(e.getName());
-        a.setConditions(mapConditions(e.getConditions()));
-        a.setActions(mapActions(e.getActions()));
-        return a;
+        return ScenarioAddedEventAvro.newBuilder()
+                .setName(e.getName())
+                .setConditions(mapConditions(e.getConditions()))
+                .setActions(mapActions(e.getActions()))
+                .build();
     }
 
     private ScenarioRemovedEventAvro toScenarioRemoved(ScenarioRemovedEvent e) {
-        ScenarioRemovedEventAvro a = new ScenarioRemovedEventAvro();
-        a.setName(e.getName());
-        return a;
+        return ScenarioRemovedEventAvro.newBuilder()
+                .setName(e.getName())
+                .build();
     }
 
     private List<ScenarioConditionAvro> mapConditions(List<ScenarioCondition> conditions) {
@@ -62,12 +62,12 @@ public class HubEventAvroMapper {
     }
 
     private ScenarioConditionAvro toCondition(ScenarioCondition c) {
-        ScenarioConditionAvro a = new ScenarioConditionAvro();
-        a.setSensorId(c.getSensorId());
-        a.setType(ConditionTypeAvro.valueOf(c.getType().name()));
-        a.setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()));
-        a.setValue(mapUnionValue(c.getValue()));
-        return a;
+        return ScenarioConditionAvro.newBuilder()
+                .setSensorId(c.getSensorId())
+                .setType(ConditionTypeAvro.valueOf(c.getType().name()))
+                .setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()))
+                .setValue(mapUnionValue(c.getValue()))
+                .build();
     }
 
     private Object mapUnionValue(JsonNode value) {
@@ -82,10 +82,10 @@ public class HubEventAvroMapper {
     }
 
     private DeviceActionAvro toAction(DeviceAction a) {
-        DeviceActionAvro av = new DeviceActionAvro();
-        av.setSensorId(a.getSensorId());
-        av.setType(ActionTypeAvro.valueOf(a.getType().name()));
-        av.setValue(a.getValue());
-        return av;
+        return DeviceActionAvro.newBuilder()
+                .setSensorId(a.getSensorId())
+                .setType(ActionTypeAvro.valueOf(a.getType().name()))
+                .setValue(a.getValue())
+                .build();
     }
 }
