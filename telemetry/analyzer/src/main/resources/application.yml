@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/analyzer
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    schemas: public
+    create-schemas: true
+
+analyzer:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumers:
+      hub-events:
+        topic: telemetry.hubs.v1
+        group-id: analyzer-hub-events
+        poll-timeout-ms: 1000
+        max-poll-records: 200
+        enable-auto-commit: true
+
+      snapshots:
+        topic: telemetry.snapshots.v1
+        group-id: analyzer-snapshots
+        poll-timeout-ms: 1000
+        max-poll-records: 200
+        enable-auto-commit: false
+
+grpc:
+  client:
+    hub-router:
+      address: "static://localhost:59090"
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
