@@ -29,7 +29,7 @@ public class SensorEventAvroMapper {
         avro.setPayload(payload);
         return avro;
     }
-
+    //
     private LightSensorAvro toLight(LightSensorEvent e) {
         LightSensorAvro a = new LightSensorAvro();
         a.setLinkQuality(e.getLinkQuality());
