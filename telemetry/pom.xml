@@ -15,6 +15,7 @@
     <modules>
         <module>analyzer</module>
         <module>serialization</module>
+        <module>aggregator</module>
         <module>collector</module>
     </modules>
 
