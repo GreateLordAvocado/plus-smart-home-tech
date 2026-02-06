@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import ru.yandex.practicum.kafka.telemetry.analyzer.processor.HubEventProcessor;
 import ru.yandex.practicum.kafka.telemetry.analyzer.processor.SnapshotProcessor;
-
+//
 @Slf4j
 @SpringBootApplication
 @ConfigurationPropertiesScan
