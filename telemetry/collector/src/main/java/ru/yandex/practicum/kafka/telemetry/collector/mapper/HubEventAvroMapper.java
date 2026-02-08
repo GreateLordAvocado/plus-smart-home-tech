@@ -27,8 +27,6 @@ import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
 import java.time.Instant;
 import java.util.List;
 
-import static ru.yandex.practicum.grpc.telemetry.event.HubEventProto.PayloadCase.*;
-
 @Component
 public class HubEventAvroMapper {
 
@@ -38,27 +36,25 @@ public class HubEventAvroMapper {
             case DEVICE_REMOVED -> mapDeviceRemoved(event.getDeviceRemoved());
             case SCENARIO_ADDED -> mapScenarioAdded(event.getScenarioAdded());
             case SCENARIO_REMOVED -> mapScenarioRemoved(event.getScenarioRemoved());
-            case PAYLOAD_NOT_SET ->
-                    throw new IllegalArgumentException("HubEvent payload is not set");
+            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("HubEvent payload is not set");
         };
 
-        final long timestamp = event.hasTimestamp()
-                ? event.getTimestamp().getSeconds() * 1000L
-                    + event.getTimestamp().getNanos() / 1_000_000L
+        final long ts = event.hasTimestamp()
+                ? event.getTimestamp().getSeconds() * 1000L + event.getTimestamp().getNanos() / 1_000_000L
                 : Instant.now().toEpochMilli();
 
         return HubEventAvro.newBuilder()
                 .setHubId(event.getHubId())
-                .setTimestamp(timestamp)
+                .setTimestamp(ts)
                 .setPayload(payload)
                 .build();
     }
 
     private DeviceAddedEventAvro mapDeviceAdded(DeviceAddedEventProto e) {
-        DeviceType type = e.getType();
+        DeviceType t = e.getType();
         return DeviceAddedEventAvro.newBuilder()
                 .setId(e.getId())
-                .setType(DeviceTypeAvro.valueOf(type.name()))
+                .setType(DeviceTypeAvro.valueOf(t.name()))
                 .build();
     }
 
@@ -83,42 +79,40 @@ public class HubEventAvroMapper {
     }
 
     private List<ScenarioConditionAvro> mapConditions(List<ScenarioConditionProto> conditions) {
-        return conditions.stream()
-                .map(this::mapCondition)
-                .toList();
+        return conditions.stream().map(this::mapCondition).toList();
     }
 
     private ScenarioConditionAvro mapCondition(ScenarioConditionProto c) {
         ConditionType type = c.getType();
-        ConditionOperation operation = c.getOperation();
+        ConditionOperation op = c.getOperation();
 
         return ScenarioConditionAvro.newBuilder()
                 .setSensorId(c.getSensorId())
                 .setType(ConditionTypeAvro.valueOf(type.name()))
-                .setOperation(ConditionOperationAvro.valueOf(operation.name()))
+                .setOperation(ConditionOperationAvro.valueOf(op.name()))
                 .setValue(mapConditionValue(c))
                 .build();
     }
 
     private Object mapConditionValue(ScenarioConditionProto c) {
         return switch (c.getValueCase()) {
-            case INT_VALUE -> c.getIntValue();
-            case BOOL_VALUE -> c.getBoolValue();
+            case INT_VALUE -> Integer.valueOf(c.getIntValue());
+            case BOOL_VALUE -> Boolean.valueOf(c.getBoolValue());
             case VALUE_NOT_SET -> null;
         };
     }
 
     private List<DeviceActionAvro> mapActions(List<DeviceActionProto> actions) {
-        return actions.stream()
-                .map(this::mapAction)
-                .toList();
+        return actions.stream().map(this::mapAction).toList();
     }
 
     private DeviceActionAvro mapAction(DeviceActionProto a) {
+        Integer value = a.hasValue() ? Integer.valueOf(a.getValue()) : null;
+
         return DeviceActionAvro.newBuilder()
                 .setSensorId(a.getSensorId())
                 .setType(ActionTypeAvro.valueOf(a.getType().name()))
-                .setValue(a.getValue())
+                .setValue(value)
                 .build();
     }
 }

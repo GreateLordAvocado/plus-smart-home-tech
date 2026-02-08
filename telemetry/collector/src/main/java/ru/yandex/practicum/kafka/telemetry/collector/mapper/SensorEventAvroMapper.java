@@ -7,7 +7,6 @@ import ru.yandex.practicum.grpc.telemetry.event.MotionSensorProto;
 import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.grpc.telemetry.event.SwitchSensorProto;
 import ru.yandex.practicum.grpc.telemetry.event.TemperatureSensorProto;
-
 import ru.yandex.practicum.kafka.telemetry.event.ClimateSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.LightSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.MotionSensorAvro;
@@ -16,6 +15,8 @@ import ru.yandex.practicum.kafka.telemetry.event.SwitchSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.TemperatureSensorAvro;
 
 import java.time.Instant;
+
+import static ru.yandex.practicum.grpc.telemetry.event.SensorEventProto.PayloadCase.*;
 
 @Component
 public class SensorEventAvroMapper {
@@ -34,47 +35,47 @@ public class SensorEventAvroMapper {
                 ? event.getTimestamp().getSeconds() * 1000L + event.getTimestamp().getNanos() / 1_000_000L
                 : Instant.now().toEpochMilli();
 
-        SensorEventAvro avro = new SensorEventAvro();
-        avro.setId(event.getId());
-        avro.setHubId(event.getHubId());
-        avro.setTimestamp(ts);
-        avro.setPayload(payload);
-        return avro;
+        return SensorEventAvro.newBuilder()
+                .setId(event.getId())
+                .setHubId(event.getHubId())
+                .setTimestamp(ts)
+                .setPayload(payload)
+                .build();
     }
 
     private LightSensorAvro mapLight(LightSensorProto e) {
-        LightSensorAvro a = new LightSensorAvro();
-        a.setLinkQuality(e.getLinkQuality());
-        a.setLuminosity(e.getLuminosity());
-        return a;
+        return LightSensorAvro.newBuilder()
+                .setLinkQuality(e.getLinkQuality())
+                .setLuminosity(e.getLuminosity())
+                .build();
     }
 
     private MotionSensorAvro mapMotion(MotionSensorProto e) {
-        MotionSensorAvro a = new MotionSensorAvro();
-        a.setLinkQuality(e.getLinkQuality());
-        a.setMotion(e.getMotion());
-        a.setVoltage(e.getVoltage());
-        return a;
+        return MotionSensorAvro.newBuilder()
+                .setLinkQuality(e.getLinkQuality())
+                .setMotion(e.getMotion())
+                .setVoltage(e.getVoltage())
+                .build();
     }
 
     private SwitchSensorAvro mapSwitch(SwitchSensorProto e) {
-        SwitchSensorAvro a = new SwitchSensorAvro();
-        a.setState(e.getState());
-        return a;
+        return SwitchSensorAvro.newBuilder()
+                .setState(e.getState())
+                .build();
     }
 
     private TemperatureSensorAvro mapTemperature(TemperatureSensorProto e) {
-        TemperatureSensorAvro a = new TemperatureSensorAvro();
-        a.setTemperatureC(e.getTemperatureC());
-        a.setTemperatureF(e.getTemperatureF());
-        return a;
+        return TemperatureSensorAvro.newBuilder()
+                .setTemperatureC(e.getTemperatureC())
+                .setTemperatureF(e.getTemperatureF())
+                .build();
     }
 
     private ClimateSensorAvro mapClimate(ClimateSensorProto e) {
-        ClimateSensorAvro a = new ClimateSensorAvro();
-        a.setTemperatureC(e.getTemperatureC());
-        a.setHumidity(e.getHumidity());
-        a.setCo2Level(e.getCo2Level());
-        return a;
+        return ClimateSensorAvro.newBuilder()
+                .setTemperatureC(e.getTemperatureC())
+                .setHumidity(e.getHumidity())
+                .setCo2Level(e.getCo2Level())
+                .build();
     }
 }
