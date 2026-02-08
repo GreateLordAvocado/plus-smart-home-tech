@@ -147,8 +147,7 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                     aa.setSensorId(a.getSensorId());
                     aa.setType(ActionTypeAvro.valueOf(a.getType().name()));
 
-                    // FIX: value в proto = optional int32, значит используем hasValue()
-                    aa.setValue(a.hasValue() ? a.getValue() : null);
+                    aa.setValue(a.hasValue() ? a.getValue() : 0);
 
                     actions.add(aa);
                 });

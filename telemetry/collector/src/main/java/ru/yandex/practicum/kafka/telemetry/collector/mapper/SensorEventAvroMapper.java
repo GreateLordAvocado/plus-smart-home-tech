@@ -1,35 +1,32 @@
 package ru.yandex.practicum.kafka.telemetry.collector.mapper;
 
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.grpc.telemetry.event.ClimateSensorProto;
-import ru.yandex.practicum.grpc.telemetry.event.LightSensorProto;
-import ru.yandex.practicum.grpc.telemetry.event.MotionSensorProto;
-import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
-import ru.yandex.practicum.grpc.telemetry.event.SwitchSensorProto;
-import ru.yandex.practicum.grpc.telemetry.event.TemperatureSensorProto;
-import ru.yandex.practicum.kafka.telemetry.event.ClimateSensorAvro;
-import ru.yandex.practicum.kafka.telemetry.event.LightSensorAvro;
-import ru.yandex.practicum.kafka.telemetry.event.MotionSensorAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SwitchSensorAvro;
-import ru.yandex.practicum.kafka.telemetry.event.TemperatureSensorAvro;
+import org.springframework.util.StringUtils;
+import ru.yandex.practicum.grpc.telemetry.event.*;
+import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.time.Instant;
-
-import static ru.yandex.practicum.grpc.telemetry.event.SensorEventProto.PayloadCase.*;
 
 @Component
 public class SensorEventAvroMapper {
 
     public SensorEventAvro toAvro(SensorEventProto event) {
+        if (!StringUtils.hasText(event.getId()) || !StringUtils.hasText(event.getHubId())) {
+            return null;
+        }
+
         final Object payload = switch (event.getPayloadCase()) {
             case LIGHT -> mapLight(event.getLight());
             case MOTION -> mapMotion(event.getMotion());
             case SWITCH_SENSOR -> mapSwitch(event.getSwitchSensor());
             case TEMPERATURE -> mapTemperature(event.getTemperature());
             case CLIMATE -> mapClimate(event.getClimate());
-            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("SensorEvent payload is not set");
+            case PAYLOAD_NOT_SET -> null;
         };
+
+        if (payload == null) {
+            return null;
+        }
 
         final long ts = event.hasTimestamp()
                 ? event.getTimestamp().getSeconds() * 1000L + event.getTimestamp().getNanos() / 1_000_000L
