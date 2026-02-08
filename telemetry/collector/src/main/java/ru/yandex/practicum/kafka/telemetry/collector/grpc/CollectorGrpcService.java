@@ -13,7 +13,6 @@ import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
 
 @GrpcService
 public class CollectorGrpcService extends CollectorControllerGrpc.CollectorControllerImplBase {
@@ -26,98 +25,84 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
 
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
-        try {
-            SensorEventAvro avro = toSensorEventAvro(request);
-            if (avro != null) {
-                producer.sendSensor(avro);
-            }
+        SensorEventAvro avro = toSensorEventAvro(request);
+        producer.sendSensor(avro);
 
-            responseObserver.onNext(Empty.getDefaultInstance());
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onNext(Empty.getDefaultInstance());
-            responseObserver.onCompleted();
-        }
+        responseObserver.onNext(Empty.getDefaultInstance());
+        responseObserver.onCompleted();
     }
 
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
-        try {
-            HubEventAvro avro = toHubEventAvro(request);
-            if (avro != null) {
-                producer.sendHub(avro);
-            }
+        HubEventAvro avro = toHubEventAvro(request);
+        producer.sendHub(avro);
 
-            responseObserver.onNext(Empty.getDefaultInstance());
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            // FIX: Нельзя ронять gRPC
-            responseObserver.onNext(Empty.getDefaultInstance());
-            responseObserver.onCompleted();
-        }
+        responseObserver.onNext(Empty.getDefaultInstance());
+        responseObserver.onCompleted();
     }
 
     private static long toEpochMillis(Timestamp ts) {
-        if (ts == null) {
-            return Instant.now().toEpochMilli();
-        }
+        if (ts == null) return Instant.now().toEpochMilli();
         return Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos()).toEpochMilli();
     }
 
     private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
         if (!StringUtils.hasText(p.getId()) || !StringUtils.hasText(p.getHubId())) {
-            return null;
+            throw new IllegalArgumentException("SensorEventProto: id and hub_id must be non-empty");
         }
-
-        Object payload = switch (p.getPayloadCase()) {
-            case CLIMATE -> {
-                ClimateSensorAvro e = new ClimateSensorAvro();
-                e.setTemperatureC(p.getClimate().getTemperatureC());
-                e.setHumidity(p.getClimate().getHumidity());
-                e.setCo2Level(p.getClimate().getCo2Level());
-                yield e;
-            }
-            case LIGHT -> {
-                LightSensorAvro e = new LightSensorAvro();
-                e.setLinkQuality(p.getLight().getLinkQuality());
-                e.setLuminosity(p.getLight().getLuminosity());
-                yield e;
-            }
-            case MOTION -> {
-                MotionSensorAvro e = new MotionSensorAvro();
-                e.setLinkQuality(p.getMotion().getLinkQuality());
-                e.setMotion(p.getMotion().getMotion());
-                e.setVoltage(p.getMotion().getVoltage());
-                yield e;
-            }
-            case SWITCH_SENSOR -> {
-                SwitchSensorAvro e = new SwitchSensorAvro();
-                e.setState(p.getSwitchSensor().getState());
-                yield e;
-            }
-            case TEMPERATURE -> {
-                TemperatureSensorAvro e = new TemperatureSensorAvro();
-                e.setTemperatureC(p.getTemperature().getTemperatureC());
-                e.setTemperatureF(p.getTemperature().getTemperatureF());
-                yield e;
-            }
-            case PAYLOAD_NOT_SET -> null;
-        };
-
-        if (payload == null) return null;
 
         SensorEventAvro avro = new SensorEventAvro();
         avro.setId(p.getId());
         avro.setHubId(p.getHubId());
         avro.setTimestamp(toEpochMillis(p.getTimestamp()));
+
+        Object payload = switch (p.getPayloadCase()) {
+            case CLIMATE -> {
+                ClimateSensorAvro c = new ClimateSensorAvro();
+                c.setTemperatureC(p.getClimate().getTemperatureC());
+                c.setHumidity(p.getClimate().getHumidity());
+                c.setCo2Level(p.getClimate().getCo2Level());
+                yield c;
+            }
+            case LIGHT -> {
+                LightSensorAvro l = new LightSensorAvro();
+                l.setLinkQuality(p.getLight().getLinkQuality());
+                l.setLuminosity(p.getLight().getLuminosity());
+                yield l;
+            }
+            case MOTION -> {
+                MotionSensorAvro m = new MotionSensorAvro();
+                m.setLinkQuality(p.getMotion().getLinkQuality());
+                m.setMotion(p.getMotion().getMotion());
+                m.setVoltage(p.getMotion().getVoltage());
+                yield m;
+            }
+            case SWITCH_SENSOR -> {
+                SwitchSensorAvro s = new SwitchSensorAvro();
+                s.setState(p.getSwitchSensor().getState());
+                yield s;
+            }
+            case TEMPERATURE -> {
+                TemperatureSensorAvro t = new TemperatureSensorAvro();
+                t.setTemperatureC(p.getTemperature().getTemperatureC());
+                t.setTemperatureF(p.getTemperature().getTemperatureF());
+                yield t;
+            }
+            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("SensorEventProto: payload is required");
+        };
+
         avro.setPayload(payload);
         return avro;
     }
 
     private static HubEventAvro toHubEventAvro(HubEventProto p) {
         if (!StringUtils.hasText(p.getHubId())) {
-            return null;
+            throw new IllegalArgumentException("HubEventProto: hub_id must be non-empty");
         }
+
+        HubEventAvro avro = new HubEventAvro();
+        avro.setHubId(p.getHubId());
+        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
 
         Object payload = switch (p.getPayloadCase()) {
             case DEVICE_ADDED -> {
@@ -135,25 +120,25 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 ScenarioAddedEventAvro e = new ScenarioAddedEventAvro();
                 e.setName(p.getScenarioAdded().getName());
 
-                List<ScenarioConditionAvro> conditions = new ArrayList<>();
-                p.getScenarioAdded().getConditionsList().forEach(c -> {
+                ArrayList<ScenarioConditionAvro> conditions = new ArrayList<>();
+                for (var c : p.getScenarioAdded().getConditionsList()) {
                     ScenarioConditionAvro ca = new ScenarioConditionAvro();
                     ca.setSensorId(c.getSensorId());
                     ca.setType(ConditionTypeAvro.valueOf(c.getType().name()));
                     ca.setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()));
 
-                    Object value = switch (c.getValueCase()) {
+                    Object v = switch (c.getValueCase()) {
                         case INT_VALUE -> c.getIntValue();
                         case BOOL_VALUE -> c.getBoolValue();
                         case VALUE_NOT_SET -> null;
                     };
+                    ca.setValue(v);
 
-                    ca.setValue(value);
                     conditions.add(ca);
-                });
+                }
 
-                List<DeviceActionAvro> actions = new ArrayList<>();
-                p.getScenarioAdded().getActionsList().forEach(a -> {
+                ArrayList<DeviceActionAvro> actions = new ArrayList<>();
+                for (var a : p.getScenarioAdded().getActionsList()) {
                     DeviceActionAvro aa = new DeviceActionAvro();
                     aa.setSensorId(a.getSensorId());
                     aa.setType(ActionTypeAvro.valueOf(a.getType().name()));
@@ -161,7 +146,7 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                     aa.setValue(a.hasValue() ? a.getValue() : null);
 
                     actions.add(aa);
-                });
+                }
 
                 e.setConditions(conditions);
                 e.setActions(actions);
@@ -172,14 +157,9 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 e.setName(p.getScenarioRemoved().getName());
                 yield e;
             }
-            case PAYLOAD_NOT_SET -> null;
+            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("HubEventProto: payload is required");
         };
 
-        if (payload == null) return null;
-
-        HubEventAvro avro = new HubEventAvro();
-        avro.setHubId(p.getHubId());
-        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
         avro.setPayload(payload);
         return avro;
     }

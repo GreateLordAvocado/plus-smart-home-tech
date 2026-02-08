@@ -44,8 +44,7 @@ protocol HubEventProtocol {
         string sensor_id;
         ConditionTypeAvro type;
         ConditionOperationAvro operation;
-        // FIX: порядок union важен (иначе int читается как boolean -> 1)
-        union { null, boolean, int } value = null;
+        union { null, int, boolean } value = null;
     }
 
     record DeviceActionAvro {
