@@ -26,24 +26,35 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
 
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
-        SensorEventAvro avro = toSensorEventAvro(request);
-        if (avro != null) {
-            producer.sendSensor(avro);
-        }
+        try {
+            SensorEventAvro avro = toSensorEventAvro(request);
+            if (avro != null) {
+                producer.sendSensor(avro);
+            }
 
-        responseObserver.onNext(Empty.getDefaultInstance());
-        responseObserver.onCompleted();
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        }
     }
 
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
-        HubEventAvro avro = toHubEventAvro(request);
-        if (avro != null) {
-            producer.sendHub(avro);
-        }
+        try {
+            HubEventAvro avro = toHubEventAvro(request);
+            if (avro != null) {
+                producer.sendHub(avro);
+            }
 
-        responseObserver.onNext(Empty.getDefaultInstance());
-        responseObserver.onCompleted();
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            // FIX: Нельзя ронять gRPC
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        }
     }
 
     private static long toEpochMillis(Timestamp ts) {
@@ -147,7 +158,7 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                     aa.setSensorId(a.getSensorId());
                     aa.setType(ActionTypeAvro.valueOf(a.getType().name()));
 
-                    aa.setValue(a.hasValue() ? a.getValue() : 0);
+                    aa.setValue(a.hasValue() ? a.getValue() : null);
 
                     actions.add(aa);
                 });
