@@ -4,6 +4,8 @@ import com.google.protobuf.Empty;
 import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import ru.yandex.practicum.grpc.telemetry.collector.CollectorControllerGrpc;
 import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
@@ -16,8 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @GrpcService
-public class CollectorGrpcService
-        extends CollectorControllerGrpc.CollectorControllerImplBase {
+public class CollectorGrpcService extends CollectorControllerGrpc.CollectorControllerImplBase {
+
+    private static final Logger log = LoggerFactory.getLogger(CollectorGrpcService.class);
 
     private final TelemetryKafkaProducer producer;
 
@@ -26,44 +29,46 @@ public class CollectorGrpcService
     }
 
     @Override
-    public void collectSensorEvent(
-            SensorEventProto request,
-            StreamObserver<Empty> responseObserver
-    ) {
-        SensorEventAvro avro = toSensorEventAvro(request);
-        if (avro != null) {
-            producer.sendSensor(avro);
+    public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
+        try {
+            SensorEventAvro avro = toSensorEventAvro(request);
+            if (avro != null) {
+                producer.sendSensor(avro);
+            }
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("Failed to process SensorEventProto", e);
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
         }
-
-        responseObserver.onNext(Empty.getDefaultInstance());
-        responseObserver.onCompleted();
     }
 
     @Override
-    public void collectHubEvent(
-            HubEventProto request,
-            StreamObserver<Empty> responseObserver
-    ) {
-        HubEventAvro avro = toHubEventAvro(request);
-        if (avro != null) {
-            producer.sendHub(avro);
+    public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
+        try {
+            HubEventAvro avro = toHubEventAvro(request);
+            if (avro != null) {
+                producer.sendHub(avro);
+            }
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("Failed to process HubEventProto", e);
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
         }
-
-        responseObserver.onNext(Empty.getDefaultInstance());
-        responseObserver.onCompleted();
     }
 
     private static long toEpochMillis(Timestamp ts) {
         if (ts == null) {
             return Instant.now().toEpochMilli();
         }
-        return Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos())
-                .toEpochMilli();
+        return Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos()).toEpochMilli();
     }
 
     private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
-        if (!StringUtils.hasText(p.getId())
-                || !StringUtils.hasText(p.getHubId())) {
+        if (!StringUtils.hasText(p.getId()) || !StringUtils.hasText(p.getHubId())) {
             return null;
         }
 
@@ -102,7 +107,9 @@ public class CollectorGrpcService
             case PAYLOAD_NOT_SET -> null;
         };
 
-        if (payload == null) return null;
+        if (payload == null) {
+            return null;
+        }
 
         SensorEventAvro avro = new SensorEventAvro();
         avro.setId(p.getId());
@@ -121,9 +128,7 @@ public class CollectorGrpcService
             case DEVICE_ADDED -> {
                 DeviceAddedEventAvro e = new DeviceAddedEventAvro();
                 e.setId(p.getDeviceAdded().getId());
-                e.setType(DeviceTypeAvro.valueOf(
-                        p.getDeviceAdded().getType().name()
-                ));
+                e.setType(DeviceTypeAvro.valueOf(p.getDeviceAdded().getType().name()));
                 yield e;
             }
             case DEVICE_REMOVED -> {
@@ -140,13 +145,11 @@ public class CollectorGrpcService
                     ScenarioConditionAvro ca = new ScenarioConditionAvro();
                     ca.setSensorId(c.getSensorId());
                     ca.setType(ConditionTypeAvro.valueOf(c.getType().name()));
-                    ca.setOperation(ConditionOperationAvro.valueOf(
-                            c.getOperation().name()
-                    ));
+                    ca.setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()));
 
                     Object value = switch (c.getValueCase()) {
-                        case INT_VALUE -> c.getIntValue();
-                        case BOOL_VALUE -> c.getBoolValue();
+                        case INT_VALUE -> Integer.valueOf(c.getIntValue());
+                        case BOOL_VALUE -> Boolean.valueOf(c.getBoolValue());
                         case VALUE_NOT_SET -> null;
                     };
 
@@ -159,7 +162,8 @@ public class CollectorGrpcService
                     DeviceActionAvro aa = new DeviceActionAvro();
                     aa.setSensorId(a.getSensorId());
                     aa.setType(ActionTypeAvro.valueOf(a.getType().name()));
-                    aa.setValue(a.hasValue() ? a.getValue() : null);
+                    // DeviceActionProto.value = optional int32 => проверяем hasValue()
+                    aa.setValue(a.hasValue() ? Integer.valueOf(a.getValue()) : null);
                     actions.add(aa);
                 });
 
@@ -175,7 +179,9 @@ public class CollectorGrpcService
             case PAYLOAD_NOT_SET -> null;
         };
 
-        if (payload == null) return null;
+        if (payload == null) {
+            return null;
+        }
 
         HubEventAvro avro = new HubEventAvro();
         avro.setHubId(p.getHubId());
