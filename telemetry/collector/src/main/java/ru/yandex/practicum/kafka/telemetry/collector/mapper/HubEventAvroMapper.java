@@ -38,25 +38,27 @@ public class HubEventAvroMapper {
             case DEVICE_REMOVED -> mapDeviceRemoved(event.getDeviceRemoved());
             case SCENARIO_ADDED -> mapScenarioAdded(event.getScenarioAdded());
             case SCENARIO_REMOVED -> mapScenarioRemoved(event.getScenarioRemoved());
-            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("HubEvent payload is not set");
+            case PAYLOAD_NOT_SET ->
+                    throw new IllegalArgumentException("HubEvent payload is not set");
         };
 
-        final long ts = event.hasTimestamp()
-                ? event.getTimestamp().getSeconds() * 1000L + event.getTimestamp().getNanos() / 1_000_000L
+        final long timestamp = event.hasTimestamp()
+                ? event.getTimestamp().getSeconds() * 1000L
+                    + event.getTimestamp().getNanos() / 1_000_000L
                 : Instant.now().toEpochMilli();
 
         return HubEventAvro.newBuilder()
                 .setHubId(event.getHubId())
-                .setTimestamp(ts)
+                .setTimestamp(timestamp)
                 .setPayload(payload)
                 .build();
     }
 
     private DeviceAddedEventAvro mapDeviceAdded(DeviceAddedEventProto e) {
-        DeviceType t = e.getType();
+        DeviceType type = e.getType();
         return DeviceAddedEventAvro.newBuilder()
                 .setId(e.getId())
-                .setType(DeviceTypeAvro.valueOf(t.name()))
+                .setType(DeviceTypeAvro.valueOf(type.name()))
                 .build();
     }
 
@@ -81,17 +83,19 @@ public class HubEventAvroMapper {
     }
 
     private List<ScenarioConditionAvro> mapConditions(List<ScenarioConditionProto> conditions) {
-        return conditions.stream().map(this::mapCondition).toList();
+        return conditions.stream()
+                .map(this::mapCondition)
+                .toList();
     }
 
     private ScenarioConditionAvro mapCondition(ScenarioConditionProto c) {
         ConditionType type = c.getType();
-        ConditionOperation op = c.getOperation();
+        ConditionOperation operation = c.getOperation();
 
         return ScenarioConditionAvro.newBuilder()
                 .setSensorId(c.getSensorId())
                 .setType(ConditionTypeAvro.valueOf(type.name()))
-                .setOperation(ConditionOperationAvro.valueOf(op.name()))
+                .setOperation(ConditionOperationAvro.valueOf(operation.name()))
                 .setValue(mapConditionValue(c))
                 .build();
     }
@@ -105,7 +109,9 @@ public class HubEventAvroMapper {
     }
 
     private List<DeviceActionAvro> mapActions(List<DeviceActionProto> actions) {
-        return actions.stream().map(this::mapAction).toList();
+        return actions.stream()
+                .map(this::mapAction)
+                .toList();
     }
 
     private DeviceActionAvro mapAction(DeviceActionProto a) {
