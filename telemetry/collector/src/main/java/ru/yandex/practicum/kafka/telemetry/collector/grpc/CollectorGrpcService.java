@@ -1,5 +1,6 @@
 package ru.yandex.practicum.kafka.telemetry.collector.grpc;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
@@ -11,8 +12,10 @@ import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.kafka.telemetry.collector.kafka.TelemetryKafkaProducer;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.UUID;
 
 @GrpcService
 public class CollectorGrpcService extends CollectorControllerGrpc.CollectorControllerImplBase {
@@ -46,13 +49,32 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
         return Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos()).toEpochMilli();
     }
 
-    private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
-        if (!StringUtils.hasText(p.getId()) || !StringUtils.hasText(p.getHubId())) {
-            throw new IllegalArgumentException("SensorEventProto: id and hub_id must be non-empty");
+    private static String sensorIdToString(ByteString idBytes) {
+        if (idBytes == null || idBytes.isEmpty()) {
+            throw new IllegalArgumentException("SensorEventProto: id must be set");
         }
 
+        byte[] b = idBytes.toByteArray();
+
+        if (b.length == 16) {
+            ByteBuffer bb = ByteBuffer.wrap(b);
+            long high = bb.getLong();
+            long low = bb.getLong();
+            return new UUID(high, low).toString();
+        }
+
+        return idBytes.toStringUtf8();
+    }
+
+    private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
+        if (!StringUtils.hasText(p.getHubId())) {
+            throw new IllegalArgumentException("SensorEventProto: hub_id must be non-empty");
+        }
+
+        String id = sensorIdToString(p.getId());
+
         SensorEventAvro avro = new SensorEventAvro();
-        avro.setId(p.getId());
+        avro.setId(id);
         avro.setHubId(p.getHubId());
         avro.setTimestamp(toEpochMillis(p.getTimestamp()));
 

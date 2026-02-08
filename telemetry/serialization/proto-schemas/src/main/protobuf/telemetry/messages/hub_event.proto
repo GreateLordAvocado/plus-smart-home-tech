@@ -45,8 +45,8 @@ message ScenarioConditionProto {
   ConditionOperation operation = 3;
 
   oneof value {
-    int32 int_value = 4;
-    bool bool_value = 5;
+    bool bool_value = 4;
+    int32 int_value = 5;
   }
 }
 

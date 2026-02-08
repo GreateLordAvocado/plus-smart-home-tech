@@ -34,7 +34,8 @@ message TemperatureSensorProto {
 }
 
 message SensorEventProto {
-  string id = 1;
+  bytes id = 1; // UUID in binary (16 bytes)
+
   string hub_id = 2;
   google.protobuf.Timestamp timestamp = 3;
 
