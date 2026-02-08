@@ -26,7 +26,9 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
         SensorEventAvro avro = toSensorEventAvro(request);
-        producer.sendSensor(avro);
+        if (avro != null) {
+            producer.sendSensor(avro);
+        }
 
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
@@ -35,7 +37,9 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
         HubEventAvro avro = toHubEventAvro(request);
-        producer.sendHub(avro);
+        if (avro != null) {
+            producer.sendHub(avro);
+        }
 
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
@@ -48,13 +52,8 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
 
     private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
         if (!StringUtils.hasText(p.getId()) || !StringUtils.hasText(p.getHubId())) {
-            throw new IllegalArgumentException("SensorEventProto: id and hub_id must be non-empty");
+            return null;
         }
-
-        SensorEventAvro avro = new SensorEventAvro();
-        avro.setId(p.getId());
-        avro.setHubId(p.getHubId());
-        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
 
         Object payload = switch (p.getPayloadCase()) {
             case CLIMATE -> {
@@ -88,21 +87,25 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 t.setTemperatureF(p.getTemperature().getTemperatureF());
                 yield t;
             }
-            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("SensorEventProto: payload is required");
+            case PAYLOAD_NOT_SET -> null;
         };
 
+        if (payload == null) {
+            return null;
+        }
+
+        SensorEventAvro avro = new SensorEventAvro();
+        avro.setId(p.getId());
+        avro.setHubId(p.getHubId());
+        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
         avro.setPayload(payload);
         return avro;
     }
 
     private static HubEventAvro toHubEventAvro(HubEventProto p) {
         if (!StringUtils.hasText(p.getHubId())) {
-            throw new IllegalArgumentException("HubEventProto: hub_id must be non-empty");
+            return null;
         }
-
-        HubEventAvro avro = new HubEventAvro();
-        avro.setHubId(p.getHubId());
-        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
 
         Object payload = switch (p.getPayloadCase()) {
             case DEVICE_ADDED -> {
@@ -126,10 +129,10 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                     ca.setSensorId(c.getSensorId());
                     ca.setType(ConditionTypeAvro.valueOf(c.getType().name()));
                     ca.setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()));
-                    // union { null, int, boolean }
+
                     Object v = switch (c.getValueCase()) {
-                        case INT_VALUE -> c.getIntValue();
-                        case BOOL_VALUE -> c.getBoolValue();
+                        case INT_VALUE -> Integer.valueOf(c.getIntValue());
+                        case BOOL_VALUE -> Boolean.valueOf(c.getBoolValue());
                         case VALUE_NOT_SET -> null;
                     };
                     ca.setValue(v);
@@ -141,8 +144,7 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                     DeviceActionAvro aa = new DeviceActionAvro();
                     aa.setSensorId(a.getSensorId());
                     aa.setType(ActionTypeAvro.valueOf(a.getType().name()));
-                    // union { null, int }
-                    aa.setValue(a.hasValue() ? a.getValue() : null);
+                    aa.setValue(a.hasValue() ? Integer.valueOf(a.getValue()) : null);
                     actions.add(aa);
                 }
 
@@ -155,9 +157,16 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 e.setName(p.getScenarioRemoved().getName());
                 yield e;
             }
-            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("HubEventProto: payload is required");
+            case PAYLOAD_NOT_SET -> null;
         };
 
+        if (payload == null) {
+            return null;
+        }
+
+        HubEventAvro avro = new HubEventAvro();
+        avro.setHubId(p.getHubId());
+        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
         avro.setPayload(payload);
         return avro;
     }
