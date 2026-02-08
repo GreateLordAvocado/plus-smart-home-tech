@@ -6,6 +6,7 @@ import org.springframework.util.StringUtils;
 import ru.yandex.practicum.grpc.telemetry.event.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
@@ -14,11 +15,12 @@ import java.util.UUID;
 public class SensorEventAvroMapper {
 
     public SensorEventAvro toAvro(SensorEventProto event) {
-
+        if (event == null) {
+            return null;
+        }
         if (event.getId() == null || event.getId().isEmpty()) {
             return null;
         }
-
         if (!StringUtils.hasText(event.getHubId())) {
             return null;
         }
@@ -37,8 +39,7 @@ public class SensorEventAvroMapper {
         }
 
         final long ts = event.hasTimestamp()
-                ? event.getTimestamp().getSeconds() * 1000L
-                + event.getTimestamp().getNanos() / 1_000_000L
+                ? Instant.ofEpochSecond(event.getTimestamp().getSeconds(), event.getTimestamp().getNanos()).toEpochMilli()
                 : Instant.now().toEpochMilli();
 
         return SensorEventAvro.newBuilder()
@@ -49,20 +50,20 @@ public class SensorEventAvroMapper {
                 .build();
     }
 
-    private String sensorIdToString(ByteString id) {
+    private static String sensorIdToString(ByteString id) {
+        if (id == null || id.isEmpty()) {
+            throw new IllegalArgumentException("SensorEventProto: id must be set");
+        }
+
         byte[] bytes = id.toByteArray();
 
         if (bytes.length == 16) {
-            long msb = 0;
-            long lsb = 0;
-            for (int i = 0; i < 8; i++) {
-                msb = (msb << 8) | (bytes[i] & 0xff);
-                lsb = (lsb << 8) | (bytes[i + 8] & 0xff);
-            }
+            ByteBuffer bb = ByteBuffer.wrap(bytes);
+            long msb = bb.getLong();
+            long lsb = bb.getLong();
             return new UUID(msb, lsb).toString();
         }
 
-        // fallback, если вдруг придёт не UUID
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
