@@ -38,10 +38,9 @@ public class SensorEventAvroMapper {
             return null;
         }
 
-        long ts = event.getTimestamp();
-        if (ts <= 0) {
-            ts = Instant.now().toEpochMilli();
-        }
+        final long ts = event.hasTimestamp()
+                ? Instant.ofEpochSecond(event.getTimestamp().getSeconds(), event.getTimestamp().getNanos()).toEpochMilli()
+                : Instant.now().toEpochMilli();
 
         return SensorEventAvro.newBuilder()
                 .setId(sensorIdToString(event.getId()))

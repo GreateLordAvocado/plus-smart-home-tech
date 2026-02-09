@@ -140,15 +140,10 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
             return null;
         }
 
-        long ts = p.getTimestamp();
-        if (ts <= 0) {
-            ts = Instant.now().toEpochMilli();
-        }
-
         SensorEventAvro avro = new SensorEventAvro();
         avro.setId(id);
         avro.setHubId(p.getHubId());
-        avro.setTimestamp(ts);
+        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
         avro.setPayload(payload);
         return avro;
     }
