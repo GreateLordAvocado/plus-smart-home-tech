@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,12 +34,10 @@ public class ScenarioEvaluationService {
             return List.of();
         }
 
-        Map<String, Object> states = snapshot.getSensors().stream()
-                .collect(Collectors.toMap(
-                        SensorEventAvro::getId,
-                        SensorEventAvro::getPayload,
-                        (a, b) -> b
-                ));
+        Map<String, Object> states = snapshot.getSensors();
+        if (states == null || states.isEmpty()) {
+            return List.of();
+        }
 
         List<PlannedAction> result = new ArrayList<>();
 

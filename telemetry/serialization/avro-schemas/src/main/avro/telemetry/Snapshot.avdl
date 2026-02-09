@@ -1,11 +1,18 @@
 @namespace("ru.yandex.practicum.kafka.telemetry.event")
 protocol SnapshotProtocol {
 
-    import idl "SensorEvent.avdl";
+  import idl "SensorEvent.avdl";
 
-    record SnapshotAvro {
-        string hubId;
-        long timestamp;
-        array<SensorEventAvro> sensors;
-    }
+  record SnapshotAvro {
+    string hubId;
+    long timestamp;
+
+    map<union {
+      ClimateSensorAvro,
+      LightSensorAvro,
+      MotionSensorAvro,
+      SwitchSensorAvro,
+      TemperatureSensorAvro
+    }> sensors;
+  }
 }

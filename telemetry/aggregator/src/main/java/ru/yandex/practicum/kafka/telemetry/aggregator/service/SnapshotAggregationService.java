@@ -5,8 +5,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SnapshotAvro;
 
-import java.time.Instant;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -16,27 +15,32 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SnapshotAggregationService {
 
-    private final Map<String, Map<String, SensorEventAvro>> state = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> state = new ConcurrentHashMap<>();
 
     public Optional<SnapshotAvro> onSensorEvent(SensorEventAvro event) {
-        String hubId = event.getHubId().toString();
-        String sensorId = event.getId().toString();
-
-        Map<String, SensorEventAvro> hubSensors =
-                state.computeIfAbsent(hubId, __ -> new ConcurrentHashMap<>());
-
-        SensorEventAvro prev = hubSensors.get(sensorId);
-
-        if (prev != null && Objects.equals(prev.getPayload(), event.getPayload())) {
+        if (event == null) {
             return Optional.empty();
         }
 
-        hubSensors.put(sensorId, event);
+        final String hubId = event.getHubId().toString();
+        final String sensorId = event.getId().toString();
+        final Object payload = event.getPayload();
+
+        Map<String, Object> hubSensors =
+                state.computeIfAbsent(hubId, __ -> new ConcurrentHashMap<>());
+
+        Object prevPayload = hubSensors.get(sensorId);
+
+        if (prevPayload != null && Objects.equals(prevPayload, payload)) {
+            return Optional.empty();
+        }
+
+        hubSensors.put(sensorId, payload);
 
         SnapshotAvro snapshot = SnapshotAvro.newBuilder()
                 .setHubId(hubId)
-                .setTimestamp(Instant.now().toEpochMilli())
-                .setSensors(new ArrayList<>(hubSensors.values()))
+                .setTimestamp(event.getTimestamp())
+                .setSensors(new HashMap<>(hubSensors))
                 .build();
 
         return Optional.of(snapshot);
