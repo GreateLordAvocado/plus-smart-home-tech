@@ -65,7 +65,6 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
         if (ts == null) {
             return Instant.now().toEpochMilli();
         }
-        // proto3: если timestamp не задан, будет 0/0
         if (ts.getSeconds() == 0 && ts.getNanos() == 0) {
             return Instant.now().toEpochMilli();
         }
