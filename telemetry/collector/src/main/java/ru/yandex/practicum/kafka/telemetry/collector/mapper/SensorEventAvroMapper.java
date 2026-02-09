@@ -80,5 +80,5 @@ public class SensorEventAvroMapper {
                 .setHumidity(e.getHumidity())
                 .setCo2Level(e.getCo2Level())
                 .build();
-    }
+    } // пу пу пу...
 }
