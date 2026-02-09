@@ -1,15 +1,11 @@
 package ru.yandex.practicum.kafka.telemetry.collector.mapper;
 
-import com.google.protobuf.ByteString;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import ru.yandex.practicum.grpc.telemetry.event.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.UUID;
 
 @Component
 public class SensorEventAvroMapper {
@@ -18,7 +14,7 @@ public class SensorEventAvroMapper {
         if (event == null) {
             return null;
         }
-        if (event.getId() == null || event.getId().isEmpty()) {
+        if (!StringUtils.hasText(event.getId())) {
             return null;
         }
         if (!StringUtils.hasText(event.getHubId())) {
@@ -26,11 +22,11 @@ public class SensorEventAvroMapper {
         }
 
         final Object payload = switch (event.getPayloadCase()) {
-            case LIGHT -> mapLight(event.getLight());
-            case MOTION -> mapMotion(event.getMotion());
+            case LIGHT_SENSOR -> mapLight(event.getLightSensor());
+            case MOTION_SENSOR -> mapMotion(event.getMotionSensor());
             case SWITCH_SENSOR -> mapSwitch(event.getSwitchSensor());
-            case TEMPERATURE -> mapTemperature(event.getTemperature());
-            case CLIMATE -> mapClimate(event.getClimate());
+            case TEMPERATURE_SENSOR -> mapTemperature(event.getTemperatureSensor());
+            case CLIMATE_SENSOR -> mapClimate(event.getClimateSensor());
             case PAYLOAD_NOT_SET -> null;
         };
 
@@ -38,34 +34,16 @@ public class SensorEventAvroMapper {
             return null;
         }
 
-        long ts = event.getTimestamp();
-        if (ts <= 0) {
-            ts = Instant.now().toEpochMilli();
-        }
+        final long ts = event.hasTimestamp()
+                ? Instant.ofEpochSecond(event.getTimestamp().getSeconds(), event.getTimestamp().getNanos()).toEpochMilli()
+                : Instant.now().toEpochMilli();
 
         return SensorEventAvro.newBuilder()
-                .setId(sensorIdToString(event.getId()))
+                .setId(event.getId())
                 .setHubId(event.getHubId())
                 .setTimestamp(ts)
                 .setPayload(payload)
                 .build();
-    }
-
-    private static String sensorIdToString(ByteString id) {
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("SensorEventProto: id must be set");
-        }
-
-        byte[] bytes = id.toByteArray();
-
-        if (bytes.length == 16) {
-            ByteBuffer bb = ByteBuffer.wrap(bytes);
-            long msb = bb.getLong();
-            long lsb = bb.getLong();
-            return new UUID(msb, lsb).toString();
-        }
-
-        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     private LightSensorAvro mapLight(LightSensorProto e) {

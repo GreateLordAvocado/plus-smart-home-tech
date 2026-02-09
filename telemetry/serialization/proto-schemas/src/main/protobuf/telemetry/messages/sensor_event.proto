@@ -2,19 +2,10 @@ syntax = "proto3";
 
 package telemetry.message.event;
 
+import "google/protobuf/timestamp.proto";
+
 option java_multiple_files = true;
 option java_package = "ru.yandex.practicum.grpc.telemetry.event";
-
-message ClimateSensorProto {
-  int32 temperature_c = 1;
-  int32 humidity = 2;
-  int32 co2_level = 3;
-}
-
-message LightSensorProto {
-  int32 link_quality = 1;
-  int32 luminosity = 2;
-}
 
 message MotionSensorProto {
   int32 link_quality = 1;
@@ -22,26 +13,36 @@ message MotionSensorProto {
   int32 voltage = 3;
 }
 
-message SwitchSensorProto {
-  bool state = 1;
-}
-
 message TemperatureSensorProto {
   int32 temperature_c = 1;
   int32 temperature_f = 2;
 }
 
-message SensorEventProto {
-  string hub_id = 1;
-  bytes id = 2;
+message LightSensorProto {
+  int32 link_quality = 1;
+  int32 luminosity = 2;
+}
 
-  int64 timestamp = 3;
+message ClimateSensorProto {
+  int32 temperature_c = 1;
+  int32 humidity = 2;
+  int32 co2_level = 3;
+}
+
+message SwitchSensorProto {
+  bool state = 1;
+}
+
+message SensorEventProto {
+  string id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string hubId = 3;
 
   oneof payload {
-    ClimateSensorProto climate = 4;
-    LightSensorProto light = 5;
-    MotionSensorProto motion = 6;
-    SwitchSensorProto switch_sensor = 7;
-    TemperatureSensorProto temperature = 8;
+    MotionSensorProto motion_sensor = 4;
+    TemperatureSensorProto temperature_sensor = 5;
+    LightSensorProto light_sensor = 6;
+    ClimateSensorProto climate_sensor = 7;
+    SwitchSensorProto switch_sensor = 8;
   }
 }

@@ -1,6 +1,5 @@
 package ru.yandex.practicum.kafka.telemetry.collector.grpc;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
@@ -14,10 +13,8 @@ import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.kafka.telemetry.collector.kafka.TelemetryKafkaProducer;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
-import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.UUID;
 
 @GrpcService
 public class CollectorGrpcService extends CollectorControllerGrpc.CollectorControllerImplBase {
@@ -38,9 +35,9 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 producer.sendSensor(avro);
             }
         } catch (Exception e) {
-            log.error("Failed to process SensorEventProto (hubId={}, idBytesLen={}): {}",
+            log.error("Failed to process SensorEventProto (hubId={}, id={}): {}",
                     request.getHubId(),
-                    request.getId() == null ? null : request.getId().size(),
+                    request.getId(),
                     e.getMessage(),
                     e);
         } finally {
@@ -68,57 +65,42 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
         if (ts == null) {
             return Instant.now().toEpochMilli();
         }
+        // proto3: если timestamp не задан, будет 0/0
         if (ts.getSeconds() == 0 && ts.getNanos() == 0) {
             return Instant.now().toEpochMilli();
         }
         return Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos()).toEpochMilli();
     }
 
-    private static String sensorIdToString(ByteString idBytes) {
-        if (idBytes == null || idBytes.isEmpty()) {
-            throw new IllegalArgumentException("SensorEventProto: id must be set");
-        }
-
-        byte[] b = idBytes.toByteArray();
-
-        if (b.length == 16) {
-            ByteBuffer bb = ByteBuffer.wrap(b);
-            long high = bb.getLong();
-            long low = bb.getLong();
-            return new UUID(high, low).toString();
-        }
-
-        return idBytes.toStringUtf8();
-    }
-
     private static SensorEventAvro toSensorEventAvro(SensorEventProto p) {
         if (p == null) return null;
 
+        if (!StringUtils.hasText(p.getId())) {
+            throw new IllegalArgumentException("SensorEventProto: id must be non-empty");
+        }
         if (!StringUtils.hasText(p.getHubId())) {
-            throw new IllegalArgumentException("SensorEventProto: hub_id must be non-empty");
+            throw new IllegalArgumentException("SensorEventProto: hubId must be non-empty");
         }
 
-        String id = sensorIdToString(p.getId());
-
         Object payload = switch (p.getPayloadCase()) {
-            case CLIMATE -> {
+            case CLIMATE_SENSOR -> {
                 ClimateSensorAvro c = new ClimateSensorAvro();
-                c.setTemperatureC(p.getClimate().getTemperatureC());
-                c.setHumidity(p.getClimate().getHumidity());
-                c.setCo2Level(p.getClimate().getCo2Level());
+                c.setTemperatureC(p.getClimateSensor().getTemperatureC());
+                c.setHumidity(p.getClimateSensor().getHumidity());
+                c.setCo2Level(p.getClimateSensor().getCo2Level());
                 yield c;
             }
-            case LIGHT -> {
+            case LIGHT_SENSOR -> {
                 LightSensorAvro l = new LightSensorAvro();
-                l.setLinkQuality(p.getLight().getLinkQuality());
-                l.setLuminosity(p.getLight().getLuminosity());
+                l.setLinkQuality(p.getLightSensor().getLinkQuality());
+                l.setLuminosity(p.getLightSensor().getLuminosity());
                 yield l;
             }
-            case MOTION -> {
+            case MOTION_SENSOR -> {
                 MotionSensorAvro m = new MotionSensorAvro();
-                m.setLinkQuality(p.getMotion().getLinkQuality());
-                m.setMotion(p.getMotion().getMotion());
-                m.setVoltage(p.getMotion().getVoltage());
+                m.setLinkQuality(p.getMotionSensor().getLinkQuality());
+                m.setMotion(p.getMotionSensor().getMotion());
+                m.setVoltage(p.getMotionSensor().getVoltage());
                 yield m;
             }
             case SWITCH_SENSOR -> {
@@ -126,29 +108,24 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
                 s.setState(p.getSwitchSensor().getState());
                 yield s;
             }
-            case TEMPERATURE -> {
+            case TEMPERATURE_SENSOR -> {
                 TemperatureSensorAvro t = new TemperatureSensorAvro();
-                t.setTemperatureC(p.getTemperature().getTemperatureC());
-                t.setTemperatureF(p.getTemperature().getTemperatureF());
+                t.setTemperatureC(p.getTemperatureSensor().getTemperatureC());
+                t.setTemperatureF(p.getTemperatureSensor().getTemperatureF());
                 yield t;
             }
             case PAYLOAD_NOT_SET -> null;
         };
 
         if (payload == null) {
-            log.warn("Skip SensorEventProto: payload is not set (hubId={}, id={})", p.getHubId(), id);
+            log.warn("Skip SensorEventProto: payload is not set (hubId={}, id={})", p.getHubId(), p.getId());
             return null;
         }
 
-        long ts = p.getTimestamp();
-        if (ts <= 0) {
-            ts = Instant.now().toEpochMilli();
-        }
-
         SensorEventAvro avro = new SensorEventAvro();
-        avro.setId(id);
+        avro.setId(p.getId());
         avro.setHubId(p.getHubId());
-        avro.setTimestamp(ts);
+        avro.setTimestamp(toEpochMillis(p.getTimestamp()));
         avro.setPayload(payload);
         return avro;
     }
