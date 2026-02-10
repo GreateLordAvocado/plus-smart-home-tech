@@ -10,7 +10,7 @@ import ru.yandex.practicum.kafka.telemetry.analyzer.kafka.AnalyzerKafkaPropertie
 import ru.yandex.practicum.kafka.telemetry.analyzer.kafka.AvroBytesDeserializer;
 import ru.yandex.practicum.kafka.telemetry.analyzer.service.HubRouterActionSender;
 import ru.yandex.practicum.kafka.telemetry.analyzer.service.ScenarioEvaluationService;
-import ru.yandex.practicum.kafka.telemetry.event.SnapshotAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import java.time.Duration;
 import java.util.List;
@@ -58,10 +58,10 @@ public class SnapshotProcessor {
 
                 for (var r : records) {
                     try {
-                        SnapshotAvro snapshot = avro.deserialize(r.value(), SnapshotAvro.class);
+                        SensorsSnapshotAvro snapshot = avro.deserialize(r.value(), SensorsSnapshotAvro.class);
 
-                        String hubId = snapshot.getHubId();
-                        long ts = snapshot.getTimestamp();
+                        String hubId = snapshot.getHubId().toString();
+                        long ts = snapshot.getTimestamp().toEpochMilli();
 
                         var actions = scenarioEvaluationService.evaluate(snapshot);
 
@@ -84,7 +84,7 @@ public class SnapshotProcessor {
                 }
             }
         } catch (WakeupException e) {
-
+            // ignore on shutdown
         } catch (Exception e) {
             log.error("SnapshotProcessor failed", e);
         } finally {

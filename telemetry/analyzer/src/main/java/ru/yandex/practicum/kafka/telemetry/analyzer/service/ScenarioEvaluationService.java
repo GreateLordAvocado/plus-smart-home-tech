@@ -26,7 +26,7 @@ public class ScenarioEvaluationService {
     private final ActionRepository actionRepository;
 
     @Transactional(readOnly = true)
-    public List<PlannedAction> evaluate(SnapshotAvro snapshot) {
+    public List<PlannedAction> evaluate(SensorsSnapshotAvro snapshot) {
         String hubId = snapshot.getHubId();
 
         List<Scenario> scenarios = scenarioRepository.findByHubId(hubId);
@@ -34,7 +34,7 @@ public class ScenarioEvaluationService {
             return List.of();
         }
 
-        Map<String, Object> states = snapshot.getSensors();
+        Map<String, SensorStateAvro> states = snapshot.getSensorsState();
         if (states == null || states.isEmpty()) {
             return List.of();
         }
@@ -50,7 +50,7 @@ public class ScenarioEvaluationService {
         return result;
     }
 
-    private boolean scenarioMatches(Map<String, Object> states, Scenario scenario) {
+    private boolean scenarioMatches(Map<String, SensorStateAvro> states, Scenario scenario) {
         var links = scenarioConditionLinkRepository.findByIdScenarioId(scenario.getId());
         if (links.isEmpty()) {
             return false;
@@ -65,12 +65,12 @@ public class ScenarioEvaluationService {
                 return false;
             }
 
-            Object sensorState = states.get(sensorId);
-            if (sensorState == null) {
+            SensorStateAvro sensorState = states.get(sensorId);
+            if (sensorState == null || sensorState.getData() == null) {
                 return false;
             }
 
-            Integer sensorValue = extractValueByConditionType(sensorState, cond.getType());
+            Integer sensorValue = extractValueByConditionType(sensorState.getData(), cond.getType());
             if (sensorValue == null) {
                 return false;
             }
@@ -118,47 +118,47 @@ public class ScenarioEvaluationService {
         return predicate.test(actual, expected);
     }
 
-    private Integer extractValueByConditionType(Object sensorState, ConditionType type) {
+    private Integer extractValueByConditionType(Object sensorPayload, ConditionType type) {
         if (type == ConditionType.MOTION) {
-            if (sensorState instanceof MotionSensorAvro m) {
+            if (sensorPayload instanceof MotionSensorAvro m) {
                 return m.getMotion() ? 1 : 0;
             }
             return null;
         }
 
         if (type == ConditionType.SWITCH) {
-            if (sensorState instanceof SwitchSensorAvro s) {
+            if (sensorPayload instanceof SwitchSensorAvro s) {
                 return s.getState() ? 1 : 0;
             }
             return null;
         }
 
         if (type == ConditionType.LUMINOSITY) {
-            if (sensorState instanceof LightSensorAvro l) {
+            if (sensorPayload instanceof LightSensorAvro l) {
                 return l.getLuminosity();
             }
             return null;
         }
 
         if (type == ConditionType.TEMPERATURE) {
-            if (sensorState instanceof TemperatureSensorAvro t) {
+            if (sensorPayload instanceof TemperatureSensorAvro t) {
                 return t.getTemperatureC();
             }
-            if (sensorState instanceof ClimateSensorAvro c) {
+            if (sensorPayload instanceof ClimateSensorAvro c) {
                 return c.getTemperatureC();
             }
             return null;
         }
 
         if (type == ConditionType.CO2LEVEL) {
-            if (sensorState instanceof ClimateSensorAvro c) {
+            if (sensorPayload instanceof ClimateSensorAvro c) {
                 return c.getCo2Level();
             }
             return null;
         }
 
         if (type == ConditionType.HUMIDITY) {
-            if (sensorState instanceof ClimateSensorAvro c) {
+            if (sensorPayload instanceof ClimateSensorAvro c) {
                 return c.getHumidity();
             }
             return null;

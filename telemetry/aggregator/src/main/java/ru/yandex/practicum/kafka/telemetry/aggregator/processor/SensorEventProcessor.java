@@ -11,7 +11,7 @@ import ru.yandex.practicum.kafka.telemetry.aggregator.kafka.AvroBytesDeserialize
 import ru.yandex.practicum.kafka.telemetry.aggregator.producer.SnapshotProducer;
 import ru.yandex.practicum.kafka.telemetry.aggregator.service.SnapshotAggregationService;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SnapshotAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -60,7 +60,7 @@ public class SensorEventProcessor {
 
                     SensorEventAvro event = avroDeserializer.deserialize(record.value(), SensorEventAvro.class);
 
-                    Optional<SnapshotAvro> snapshotOpt = aggregationService.onSensorEvent(event);
+                    Optional<SensorsSnapshotAvro> snapshotOpt = aggregationService.onSensorEvent(event);
                     snapshotOpt.ifPresent(snapshotProducer::send);
                 }
 

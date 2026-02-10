@@ -5,7 +5,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.aggregator.kafka.AggregatorKafkaProperties;
 import ru.yandex.practicum.kafka.telemetry.aggregator.kafka.AvroBytesSerializer;
-import ru.yandex.practicum.kafka.telemetry.event.SnapshotAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 @Slf4j
 @Component
@@ -23,7 +23,7 @@ public class SnapshotProducer {
         this.props = props;
     }
 
-    public void send(SnapshotAvro snapshot) {
+    public void send(SensorsSnapshotAvro snapshot) {
         byte[] payload = serializer.serialize(snapshot);
         String topic = props.getTopics().getSnapshots();
 
