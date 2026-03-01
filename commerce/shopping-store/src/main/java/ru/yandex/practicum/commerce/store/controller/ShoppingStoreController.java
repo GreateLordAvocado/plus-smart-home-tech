@@ -137,7 +137,9 @@ public class ShoppingStoreController implements ShoppingStoreClient {
 
     private PageProductDto toPageDto(Page<ProductDto> page) {
         PageProductDto dto = new PageProductDto();
-        dto.setContent(page.getContent());
+
+        dto.setContent(page.getContent() == null ? java.util.List.of() : page.getContent());
+
         dto.setTotalPages(page.getTotalPages());
         dto.setTotalElements(page.getTotalElements());
         dto.setSize(page.getSize());

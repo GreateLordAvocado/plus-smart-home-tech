@@ -1,5 +1,6 @@
 package ru.yandex.practicum.commerce.interactionapi.store.dto;
 
+import java.util.Collections;
 import java.util.List;
 
 public class PageProductDto {
@@ -19,7 +20,7 @@ public class PageProductDto {
     }
 
     public List<ProductDto> getContent() {
-        return content;
+        return content == null ? Collections.emptyList() : content;
     }
 
     public void setContent(List<ProductDto> content) {
