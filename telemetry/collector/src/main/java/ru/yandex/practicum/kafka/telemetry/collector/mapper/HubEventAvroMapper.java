@@ -27,8 +27,6 @@ import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
 import java.time.Instant;
 import java.util.List;
 
-import static ru.yandex.practicum.grpc.telemetry.event.HubEventProto.PayloadCase.*;
-
 @Component
 public class HubEventAvroMapper {
 
@@ -98,8 +96,8 @@ public class HubEventAvroMapper {
 
     private Object mapConditionValue(ScenarioConditionProto c) {
         return switch (c.getValueCase()) {
-            case INT_VALUE -> c.getIntValue();
-            case BOOL_VALUE -> c.getBoolValue();
+            case INT_VALUE -> Integer.valueOf(c.getIntValue());
+            case BOOL_VALUE -> Boolean.valueOf(c.getBoolValue());
             case VALUE_NOT_SET -> null;
         };
     }
@@ -109,11 +107,12 @@ public class HubEventAvroMapper {
     }
 
     private DeviceActionAvro mapAction(DeviceActionProto a) {
-        // ActionType — вложенный enum DeviceActionProto.ActionType
+        Integer value = a.hasValue() ? Integer.valueOf(a.getValue()) : null;
+
         return DeviceActionAvro.newBuilder()
                 .setSensorId(a.getSensorId())
                 .setType(ActionTypeAvro.valueOf(a.getType().name()))
-                .setValue(a.getValue())
+                .setValue(value)
                 .build();
     }
 }
