@@ -3,11 +3,12 @@ package ru.yandex.practicum.commerce.store.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.commerce.interactionapi.store.client.ShoppingStoreClient;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
+import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.SetProductQuantityStateRequest;
 import ru.yandex.practicum.commerce.store.service.ProductService;
 
@@ -55,6 +56,12 @@ public class ShoppingStoreController implements ShoppingStoreClient {
         return service.deactivate(productId);
     }
 
+    @PostMapping("/api/v1/shopping-store/quantityState")
+    public Boolean setQuantityState(@RequestParam("productId") UUID productId,
+                                    @RequestParam("quantityState") QuantityState quantityState) {
+        return service.setQuantityState(productId, quantityState);
+    }
+
     @Override
     public Boolean setQuantityState(SetProductQuantityStateRequest request) {
         return service.setQuantityState(request.getProductId(), request.getQuantityState());
@@ -65,16 +72,20 @@ public class ShoppingStoreController implements ShoppingStoreClient {
             return Sort.unsorted();
         }
 
-        // OpenAPI подразумевает sort как массив строк, часто вида: "field,asc"
         Sort result = Sort.unsorted();
         for (String s : sort) {
             if (s == null || s.isBlank()) continue;
 
             String[] parts = s.split(",");
             String field = parts[0].trim();
-            Sort.Direction dir = (parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()))
-                    ? Sort.Direction.DESC
-                    : Sort.Direction.ASC;
+
+            Sort.Direction dir = Sort.Direction.ASC;
+            if (parts.length > 1) {
+                String rawDir = parts[1].trim();
+                if ("desc".equalsIgnoreCase(rawDir)) {
+                    dir = Sort.Direction.DESC;
+                }
+            }
 
             Sort one = Sort.by(dir, field);
             result = result.and(one);
