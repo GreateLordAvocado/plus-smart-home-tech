@@ -1,14 +1,16 @@
 package ru.yandex.practicum.commerce.interactionapi.store.client;
 
+import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
-import ru.yandex.practicum.commerce.interactionapi.store.dto.SetProductQuantityStateRequest;
+import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
 
 import java.util.List;
 import java.util.UUID;
 
+@FeignClient(name = "shopping-store")
 @RequestMapping("/api/v1/shopping-store")
 public interface ShoppingStoreClient {
 
@@ -31,5 +33,6 @@ public interface ShoppingStoreClient {
     Boolean removeProductFromStore(@RequestBody UUID productId);
 
     @PostMapping("/quantityState")
-    Boolean setQuantityState(@RequestBody SetProductQuantityStateRequest request);
+    Boolean setQuantityState(@RequestParam("productId") UUID productId,
+                             @RequestParam("quantityState") QuantityState quantityState);
 }

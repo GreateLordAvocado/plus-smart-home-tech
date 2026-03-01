@@ -3,15 +3,12 @@ package ru.yandex.practicum.commerce.store.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.commerce.interactionapi.store.client.ShoppingStoreClient;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
-import ru.yandex.practicum.commerce.interactionapi.store.dto.SetProductQuantityStateRequest;
 import ru.yandex.practicum.commerce.store.service.ProductService;
 
 import java.util.ArrayList;
@@ -19,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/v1/shopping-store")
 public class ShoppingStoreController implements ShoppingStoreClient {
 
     private final ProductService service;
@@ -28,7 +26,12 @@ public class ShoppingStoreController implements ShoppingStoreClient {
     }
 
     @Override
-    public PageProductDto getProducts(ProductCategory category, Integer page, Integer size, List<String> sort) {
+    @GetMapping
+    public PageProductDto getProducts(@RequestParam("category") ProductCategory category,
+                                      @RequestParam(value = "page", required = false) Integer page,
+                                      @RequestParam(value = "size", required = false) Integer size,
+                                      @RequestParam(value = "sort", required = false) List<String> sort) {
+
         int p = page == null ? 0 : page;
         int s = size == null ? 10 : size;
 
@@ -40,35 +43,33 @@ public class ShoppingStoreController implements ShoppingStoreClient {
     }
 
     @Override
-    public ProductDto createProduct(ProductDto product) {
+    @PutMapping
+    public ProductDto createProduct(@RequestBody ProductDto product) {
         return service.create(product);
     }
 
     @Override
-    public ProductDto updateProduct(ProductDto product) {
+    @PostMapping
+    public ProductDto updateProduct(@RequestBody ProductDto product) {
         return service.update(product);
     }
 
     @Override
-    public ProductDto getProduct(UUID productId) {
+    @GetMapping("/{productId}")
+    public ProductDto getProduct(@PathVariable("productId") UUID productId) {
         return service.get(productId);
     }
 
     @Override
-    public Boolean removeProductFromStore(UUID productId) {
+    @PostMapping("/removeProductFromStore")
+    public Boolean removeProductFromStore(@RequestBody UUID productId) {
         return service.deactivate(productId);
     }
 
-    public Boolean setQuantityState(SetProductQuantityStateRequest request) {
-        if (request == null || request.getProductId() == null || request.getQuantityState() == null) {
-            return false;
-        }
-        return service.setQuantityState(request.getProductId(), request.getQuantityState());
-    }
-
-    @PostMapping(value = "/api/v1/shopping-store/quantityState", params = {"productId", "quantityState"})
-    public Boolean setQuantityStateFromParams(@RequestParam("productId") UUID productId,
-                                              @RequestParam("quantityState") QuantityState quantityState) {
+    @Override
+    @PostMapping("/quantityState")
+    public Boolean setQuantityState(@RequestParam("productId") UUID productId,
+                                    @RequestParam("quantityState") QuantityState quantityState) {
         return service.setQuantityState(productId, quantityState);
     }
 
@@ -103,40 +104,34 @@ public class ShoppingStoreController implements ShoppingStoreClient {
         List<String> out = new ArrayList<>();
         int i = 0;
         while (i < sort.size()) {
-            String current = sort.get(i);
-            if (current == null) {
+            String a = sort.get(i);
+            if (a == null || a.isBlank()) {
                 i++;
                 continue;
             }
+            String aa = a.trim();
 
-            String trimmed = current.trim();
-            if (trimmed.isEmpty()) {
-                i++;
-                continue;
-            }
-
-            if (trimmed.contains(",")) {
-                out.add(trimmed);
+            if (aa.contains(",")) {
+                out.add(aa);
                 i++;
                 continue;
             }
 
             if (i + 1 < sort.size()) {
-                String next = sort.get(i + 1);
-                if (next != null) {
-                    String nextTrim = next.trim();
-                    if ("asc".equalsIgnoreCase(nextTrim) || "desc".equalsIgnoreCase(nextTrim)) {
-                        out.add(trimmed + "," + nextTrim);
+                String b = sort.get(i + 1);
+                if (b != null) {
+                    String bb = b.trim();
+                    if ("asc".equalsIgnoreCase(bb) || "desc".equalsIgnoreCase(bb)) {
+                        out.add(aa + "," + bb);
                         i += 2;
                         continue;
                     }
                 }
             }
 
-            out.add(trimmed);
+            out.add(aa);
             i++;
         }
-
         return out;
     }
 
