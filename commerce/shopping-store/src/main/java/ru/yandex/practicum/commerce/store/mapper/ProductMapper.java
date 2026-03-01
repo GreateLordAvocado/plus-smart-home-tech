@@ -4,6 +4,9 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
 import ru.yandex.practicum.commerce.store.model.ProductEntity;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 @Component
 public class ProductMapper {
 
@@ -29,7 +32,7 @@ public class ProductMapper {
         e.setQuantityState(dto.getQuantityState());
         e.setProductState(dto.getProductState());
         e.setProductCategory(dto.getProductCategory());
-        e.setPrice(dto.getPrice());
+        e.setPrice(normalizePrice(dto.getPrice()));
         return e;
     }
 
@@ -40,6 +43,11 @@ public class ProductMapper {
         e.setQuantityState(dto.getQuantityState());
         e.setProductState(dto.getProductState());
         e.setProductCategory(dto.getProductCategory());
-        e.setPrice(dto.getPrice());
+        e.setPrice(normalizePrice(dto.getPrice()));
+    }
+
+    private BigDecimal normalizePrice(BigDecimal price) {
+        if (price == null) return null;
+        return price.setScale(2, RoundingMode.HALF_UP);
     }
 }

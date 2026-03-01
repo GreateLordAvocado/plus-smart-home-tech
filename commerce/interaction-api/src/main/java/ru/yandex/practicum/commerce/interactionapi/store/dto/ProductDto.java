@@ -1,9 +1,10 @@
 package ru.yandex.practicum.commerce.interactionapi.store.dto;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public class ProductDto {
@@ -29,8 +30,8 @@ public class ProductDto {
     private ProductCategory productCategory;
 
     @NotNull
-    @Min(1)
-    private Integer price;
+    @DecimalMin(value = "0.01")
+    private BigDecimal price;
 
     public ProductDto() {
     }
@@ -91,11 +92,11 @@ public class ProductDto {
         this.productCategory = productCategory;
     }
 
-    public Integer getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Integer price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 }

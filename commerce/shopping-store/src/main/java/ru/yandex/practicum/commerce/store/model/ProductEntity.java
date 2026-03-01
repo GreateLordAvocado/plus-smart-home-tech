@@ -5,6 +5,7 @@ import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductState;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -36,8 +37,8 @@ public class ProductEntity {
     @Column(nullable = false)
     private ProductCategory productCategory;
 
-    @Column(nullable = false)
-    private Integer price;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal price;
 
     public ProductEntity() {
     }
@@ -98,11 +99,11 @@ public class ProductEntity {
         this.productCategory = productCategory;
     }
 
-    public Integer getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Integer price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 }

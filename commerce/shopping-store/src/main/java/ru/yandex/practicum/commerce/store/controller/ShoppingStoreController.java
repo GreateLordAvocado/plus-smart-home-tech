@@ -3,7 +3,9 @@ package ru.yandex.practicum.commerce.store.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.commerce.interactionapi.store.client.ShoppingStoreClient;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
@@ -12,6 +14,7 @@ import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.SetProductQuantityStateRequest;
 import ru.yandex.practicum.commerce.store.service.ProductService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,15 +59,17 @@ public class ShoppingStoreController implements ShoppingStoreClient {
         return service.deactivate(productId);
     }
 
-    @PostMapping("/api/v1/shopping-store/quantityState")
-    public Boolean setQuantityState(@RequestParam("productId") UUID productId,
-                                    @RequestParam("quantityState") QuantityState quantityState) {
-        return service.setQuantityState(productId, quantityState);
+    public Boolean setQuantityState(SetProductQuantityStateRequest request) {
+        if (request == null || request.getProductId() == null || request.getQuantityState() == null) {
+            return false;
+        }
+        return service.setQuantityState(request.getProductId(), request.getQuantityState());
     }
 
-    @Override
-    public Boolean setQuantityState(SetProductQuantityStateRequest request) {
-        return service.setQuantityState(request.getProductId(), request.getQuantityState());
+    @PostMapping(value = "/api/v1/shopping-store/quantityState", params = {"productId", "quantityState"})
+    public Boolean setQuantityStateFromParams(@RequestParam("productId") UUID productId,
+                                              @RequestParam("quantityState") QuantityState quantityState) {
+        return service.setQuantityState(productId, quantityState);
     }
 
     private Sort parseSort(List<String> sort) {
@@ -72,25 +77,67 @@ public class ShoppingStoreController implements ShoppingStoreClient {
             return Sort.unsorted();
         }
 
-        Sort result = Sort.unsorted();
-        for (String s : sort) {
-            if (s == null || s.isBlank()) continue;
+        List<String> normalized = normalizeSort(sort);
 
-            String[] parts = s.split(",");
+        Sort result = Sort.unsorted();
+        for (String raw : normalized) {
+            if (raw == null || raw.isBlank()) continue;
+
+            String[] parts = raw.split(",", -1);
             String field = parts[0].trim();
+            if (field.isBlank()) continue;
 
             Sort.Direction dir = Sort.Direction.ASC;
             if (parts.length > 1) {
-                String rawDir = parts[1].trim();
-                if ("desc".equalsIgnoreCase(rawDir)) {
-                    dir = Sort.Direction.DESC;
+                String d = parts[1].trim();
+                if ("desc".equalsIgnoreCase(d)) dir = Sort.Direction.DESC;
+                if ("asc".equalsIgnoreCase(d)) dir = Sort.Direction.ASC;
+            }
+
+            result = result.and(Sort.by(dir, field));
+        }
+        return result;
+    }
+
+    private List<String> normalizeSort(List<String> sort) {
+        List<String> out = new ArrayList<>();
+        int i = 0;
+        while (i < sort.size()) {
+            String current = sort.get(i);
+            if (current == null) {
+                i++;
+                continue;
+            }
+
+            String trimmed = current.trim();
+            if (trimmed.isEmpty()) {
+                i++;
+                continue;
+            }
+
+            if (trimmed.contains(",")) {
+                out.add(trimmed);
+                i++;
+                continue;
+            }
+
+            if (i + 1 < sort.size()) {
+                String next = sort.get(i + 1);
+                if (next != null) {
+                    String nextTrim = next.trim();
+                    if ("asc".equalsIgnoreCase(nextTrim) || "desc".equalsIgnoreCase(nextTrim)) {
+                        out.add(trimmed + "," + nextTrim);
+                        i += 2;
+                        continue;
+                    }
                 }
             }
 
-            Sort one = Sort.by(dir, field);
-            result = result.and(one);
+            out.add(trimmed);
+            i++;
         }
-        return result;
+
+        return out;
     }
 
     private PageProductDto toPageDto(Page<ProductDto> page) {
