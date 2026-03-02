@@ -1,6 +1,5 @@
 package ru.yandex.practicum.commerce.interactionapi.store.dto;
 
-import java.util.Collections;
 import java.util.List;
 
 public class PageProductDto {
@@ -9,18 +8,22 @@ public class PageProductDto {
 
     private Integer totalPages;
     private Long totalElements;
-    private Integer size;
-    private Integer number;
-    private Integer numberOfElements;
     private Boolean first;
     private Boolean last;
+    private Integer size;
+    private Integer number;
+
+    private List<SortObject> sort;
+    private PageableObject pageable;
+
+    private Integer numberOfElements;
     private Boolean empty;
 
     public PageProductDto() {
     }
 
     public List<ProductDto> getContent() {
-        return content == null ? Collections.emptyList() : content;
+        return content;
     }
 
     public void setContent(List<ProductDto> content) {
@@ -43,6 +46,22 @@ public class PageProductDto {
         this.totalElements = totalElements;
     }
 
+    public Boolean getFirst() {
+        return first;
+    }
+
+    public void setFirst(Boolean first) {
+        this.first = first;
+    }
+
+    public Boolean getLast() {
+        return last;
+    }
+
+    public void setLast(Boolean last) {
+        this.last = last;
+    }
+
     public Integer getSize() {
         return size;
     }
@@ -59,28 +78,28 @@ public class PageProductDto {
         this.number = number;
     }
 
+    public List<SortObject> getSort() {
+        return sort;
+    }
+
+    public void setSort(List<SortObject> sort) {
+        this.sort = sort;
+    }
+
+    public PageableObject getPageable() {
+        return pageable;
+    }
+
+    public void setPageable(PageableObject pageable) {
+        this.pageable = pageable;
+    }
+
     public Integer getNumberOfElements() {
         return numberOfElements;
     }
 
     public void setNumberOfElements(Integer numberOfElements) {
         this.numberOfElements = numberOfElements;
-    }
-
-    public Boolean getFirst() {
-        return first;
-    }
-
-    public void setFirst(Boolean first) {
-        this.first = first;
-    }
-
-    public Boolean getLast() {
-        return last;
-    }
-
-    public void setLast(Boolean last) {
-        this.last = last;
     }
 
     public Boolean getEmpty() {

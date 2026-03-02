@@ -3,12 +3,14 @@ package ru.yandex.practicum.commerce.store.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.commerce.interactionapi.store.client.ShoppingStoreClient;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
+import ru.yandex.practicum.commerce.interactionapi.store.dto.PageableObject;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
+import ru.yandex.practicum.commerce.interactionapi.store.dto.SortObject;
 import ru.yandex.practicum.commerce.store.service.ProductService;
 
 import java.util.ArrayList;
@@ -16,7 +18,6 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/shopping-store")
 public class ShoppingStoreController implements ShoppingStoreClient {
 
     private final ProductService service;
@@ -26,14 +27,9 @@ public class ShoppingStoreController implements ShoppingStoreClient {
     }
 
     @Override
-    @GetMapping
-    public PageProductDto getProducts(@RequestParam("category") ProductCategory category,
-                                      @RequestParam(value = "page", required = false) Integer page,
-                                      @RequestParam(value = "size", required = false) Integer size,
-                                      @RequestParam(value = "sort", required = false) List<String> sort) {
-
-        int p = (page == null) ? 0 : page;
-        int s = (size == null) ? 10 : size;
+    public PageProductDto getProducts(ProductCategory category, Integer page, Integer size, List<String> sort) {
+        int p = page == null ? 0 : page;
+        int s = size == null ? 10 : size;
 
         Sort springSort = parseSort(sort);
         PageRequest pageable = PageRequest.of(p, s, springSort);
@@ -43,33 +39,27 @@ public class ShoppingStoreController implements ShoppingStoreClient {
     }
 
     @Override
-    @PutMapping
-    public ProductDto createProduct(@RequestBody ProductDto product) {
+    public ProductDto createProduct(ProductDto product) {
         return service.create(product);
     }
 
     @Override
-    @PostMapping
-    public ProductDto updateProduct(@RequestBody ProductDto product) {
+    public ProductDto updateProduct(ProductDto product) {
         return service.update(product);
     }
 
     @Override
-    @GetMapping("/{productId}")
-    public ProductDto getProduct(@PathVariable("productId") UUID productId) {
+    public ProductDto getProduct(UUID productId) {
         return service.get(productId);
     }
 
     @Override
-    @PostMapping("/removeProductFromStore")
-    public Boolean removeProductFromStore(@RequestBody UUID productId) {
+    public Boolean removeProductFromStore(UUID productId) {
         return service.deactivate(productId);
     }
 
     @Override
-    @PostMapping("/quantityState")
-    public Boolean setQuantityState(@RequestParam("productId") UUID productId,
-                                    @RequestParam("quantityState") QuantityState quantityState) {
+    public Boolean setQuantityState(UUID productId, QuantityState quantityState) {
         return service.setQuantityState(productId, quantityState);
     }
 
@@ -146,6 +136,37 @@ public class ShoppingStoreController implements ShoppingStoreClient {
         dto.setFirst(page.isFirst());
         dto.setLast(page.isLast());
         dto.setEmpty(page.isEmpty());
+
+        List<SortObject> sortObjects = toSortObjects(page.getSort());
+        dto.setSort(sortObjects);
+
+        PageableObject pageableObject = new PageableObject();
+        pageableObject.setOffset(page.getPageable().getOffset());
+        pageableObject.setPageNumber(page.getNumber());
+        pageableObject.setPageSize(page.getSize());
+        pageableObject.setPaged(page.getPageable().isPaged());
+        pageableObject.setUnpaged(page.getPageable().isUnpaged());
+        pageableObject.setSort(sortObjects);
+        dto.setPageable(pageableObject);
+
         return dto;
+    }
+
+    private List<SortObject> toSortObjects(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return List.of();
+        }
+
+        List<SortObject> out = new ArrayList<>();
+        for (Sort.Order o : sort) {
+            SortObject so = new SortObject();
+            so.setProperty(o.getProperty());
+            so.setDirection(o.getDirection().name());
+            so.setAscending(o.isAscending());
+            so.setIgnoreCase(o.isIgnoreCase());
+            so.setNullHandling(o.getNullHandling().name());
+            out.add(so);
+        }
+        return out;
     }
 }
