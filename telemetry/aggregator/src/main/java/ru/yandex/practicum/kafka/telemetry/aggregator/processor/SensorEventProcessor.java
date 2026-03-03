@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.aggregator.kafka.AggregatorKafkaProperties;
 import ru.yandex.practicum.kafka.telemetry.aggregator.kafka.AvroBytesDeserializer;
@@ -68,9 +69,10 @@ public class SensorEventProcessor {
                     consumer.commitSync();
                 }
             }
-        } catch (Exception e) {
-            log.error("Aggregator loop crashed", e);
-            throw e;
+        } catch (WakeupException e) {
+            if (running.get()) {
+                throw e;
+            }
         } finally {
             safeClose();
         }
@@ -83,12 +85,13 @@ public class SensorEventProcessor {
     }
 
     private void safeClose() {
+        runQuietly(consumer::wakeup);
+        runQuietly(consumer::close);
+    }
+
+    private void runQuietly(Runnable action) {
         try {
-            consumer.wakeup();
-        } catch (Exception ignored) {
-        }
-        try {
-            consumer.close();
+            action.run();
         } catch (Exception ignored) {
         }
     }

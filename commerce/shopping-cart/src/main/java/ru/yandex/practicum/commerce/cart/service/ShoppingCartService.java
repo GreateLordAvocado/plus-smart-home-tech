@@ -37,64 +37,24 @@ public class ShoppingCartService {
         return toDto(cart);
     }
 
-    @Transactional
     public ShoppingCartDto addProducts(String username, Map<UUID, Long> toAdd) {
         validateUsername(username);
 
-        ShoppingCartEntity cart = repo.findByUsername(username).orElseGet(() -> {
-            ShoppingCartEntity e = new ShoppingCartEntity();
-            e.setUsername(username);
-            e.setActive(true);
-            return repo.save(e);
-        });
+        ShoppingCartDto candidate = prepareAddProducts(username, toAdd);
 
-        if (!cart.isActive()) {
-            return toDto(cart);
-        }
+        warehouseClient.checkProductQuantityEnoughForShoppingCart(candidate);
 
-        if (toAdd != null) {
-            for (Map.Entry<UUID, Long> e : toAdd.entrySet()) {
-                UUID productId = e.getKey();
-                Long qty = e.getValue();
-                if (productId == null || qty == null || qty <= 0) continue;
-
-                cart.getProducts().merge(productId, qty, Long::sum);
-            }
-        }
-
-        // Проверка наличия на складе
-        warehouseClient.checkProductQuantityEnoughForShoppingCart(toDto(cart));
-
-        return toDto(repo.save(cart));
+        return applyProducts(username, candidate.getProducts());
     }
 
-    @Transactional
     public ShoppingCartDto changeQuantity(String username, ChangeProductQuantityRequest req) {
         validateUsername(username);
 
-        ShoppingCartEntity cart = repo.findByUsername(username).orElseGet(() -> {
-            ShoppingCartEntity e = new ShoppingCartEntity();
-            e.setUsername(username);
-            e.setActive(true);
-            return repo.save(e);
-        });
+        ShoppingCartDto candidate = prepareChangeQuantity(username, req);
 
-        if (!cart.isActive()) {
-            return toDto(cart);
-        }
+        warehouseClient.checkProductQuantityEnoughForShoppingCart(candidate);
 
-        UUID productId = req.getProductId();
-        Long newQty = req.getNewQuantity();
-
-        if (!cart.getProducts().containsKey(productId)) {
-            throw new NoProductsInShoppingCartException("No such product in shopping cart: " + productId);
-        }
-
-        cart.getProducts().put(productId, newQty);
-
-        warehouseClient.checkProductQuantityEnoughForShoppingCart(toDto(cart));
-
-        return toDto(repo.save(cart));
+        return applyProducts(username, candidate.getProducts());
     }
 
     @Transactional
@@ -145,9 +105,80 @@ public class ShoppingCartService {
         repo.save(cart);
     }
 
+    @Transactional
+    protected ShoppingCartDto prepareAddProducts(String username, Map<UUID, Long> toAdd) {
+        ShoppingCartEntity cart = repo.findByUsername(username).orElseGet(() -> {
+            ShoppingCartEntity e = new ShoppingCartEntity();
+            e.setUsername(username);
+            e.setActive(true);
+            return repo.save(e);
+        });
+
+        if (!cart.isActive()) {
+            return toDto(cart);
+        }
+
+        if (toAdd != null) {
+            for (Map.Entry<UUID, Long> e : toAdd.entrySet()) {
+                UUID productId = e.getKey();
+                Long qty = e.getValue();
+                if (productId == null || qty == null || qty <= 0) continue;
+
+                cart.getProducts().merge(productId, qty, Long::sum);
+            }
+        }
+
+        return toDto(cart);
+    }
+
+    @Transactional
+    protected ShoppingCartDto prepareChangeQuantity(String username, ChangeProductQuantityRequest req) {
+        ShoppingCartEntity cart = repo.findByUsername(username).orElseGet(() -> {
+            ShoppingCartEntity e = new ShoppingCartEntity();
+            e.setUsername(username);
+            e.setActive(true);
+            return repo.save(e);
+        });
+
+        if (!cart.isActive()) {
+            return toDto(cart);
+        }
+
+        UUID productId = req.getProductId();
+        Long newQty = req.getNewQuantity();
+
+        if (!cart.getProducts().containsKey(productId)) {
+            throw new NoProductsInShoppingCartException("No such product in shopping cart: " + productId);
+        }
+
+        cart.getProducts().put(productId, newQty);
+
+        return toDto(cart);
+    }
+
+    @Transactional
+    protected ShoppingCartDto applyProducts(String username, Map<UUID, Long> products) {
+        ShoppingCartEntity cart = repo.findByUsername(username).orElseGet(() -> {
+            ShoppingCartEntity e = new ShoppingCartEntity();
+            e.setUsername(username);
+            e.setActive(true);
+            return repo.save(e);
+        });
+
+        if (!cart.isActive()) {
+            return toDto(cart);
+        }
+
+        cart.setProducts(new HashMap<>(products));
+        return toDto(repo.save(cart));
+    }
+
     private void validateUsername(String username) {
-        if (username == null || username.isBlank()) {
-            throw new NotAuthorizedUserException();
+        if (username == null) {
+            throw new NotAuthorizedUserException("Username is null");
+        }
+        if (username.isBlank()) {
+            throw new NotAuthorizedUserException("Username is blank");
         }
     }
 

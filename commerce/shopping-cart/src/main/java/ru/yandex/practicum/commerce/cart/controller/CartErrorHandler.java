@@ -6,15 +6,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.yandex.practicum.commerce.cart.exception.NoProductsInShoppingCartException;
 import ru.yandex.practicum.commerce.cart.exception.NotAuthorizedUserException;
-import ru.yandex.practicum.commerce.interactionapi.cart.dto.NoProductsInShoppingCartExceptionDto;
-import ru.yandex.practicum.commerce.interactionapi.cart.dto.NotAuthorizedUserExceptionDto;
+import ru.yandex.practicum.commerce.interactionapi.common.dto.ApiErrorDto;
 
 @RestControllerAdvice
 public class CartErrorHandler {
 
     @ExceptionHandler(NotAuthorizedUserException.class)
-    public ResponseEntity<NotAuthorizedUserExceptionDto> handleAuth(NotAuthorizedUserException ex) {
-        NotAuthorizedUserExceptionDto dto = new NotAuthorizedUserExceptionDto();
+    public ResponseEntity<ApiErrorDto> handleAuth(NotAuthorizedUserException ex) {
+        ApiErrorDto dto = new ApiErrorDto();
         dto.setHttpStatus(HttpStatus.UNAUTHORIZED.name());
         dto.setMessage(ex.getMessage());
         dto.setUserMessage(ex.getMessage());
@@ -22,8 +21,8 @@ public class CartErrorHandler {
     }
 
     @ExceptionHandler(NoProductsInShoppingCartException.class)
-    public ResponseEntity<NoProductsInShoppingCartExceptionDto> handleNoProducts(NoProductsInShoppingCartException ex) {
-        NoProductsInShoppingCartExceptionDto dto = new NoProductsInShoppingCartExceptionDto();
+    public ResponseEntity<ApiErrorDto> handleNoProducts(NoProductsInShoppingCartException ex) {
+        ApiErrorDto dto = new ApiErrorDto();
         dto.setHttpStatus(HttpStatus.BAD_REQUEST.name());
         dto.setMessage(ex.getMessage());
         dto.setUserMessage(ex.getMessage());

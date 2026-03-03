@@ -68,61 +68,54 @@ public class ShoppingStoreController implements ShoppingStoreClient {
             return Sort.unsorted();
         }
 
-        List<String> normalized = normalizeSort(sort);
-
         Sort result = Sort.unsorted();
-        for (String raw : normalized) {
-            if (raw == null || raw.isBlank()) continue;
 
-            String[] parts = raw.split(",", -1);
-            String field = parts[0].trim();
-            if (field.isBlank()) continue;
+        for (int i = 0; i < sort.size(); i++) {
+            String token = sort.get(i);
+            if (token == null || token.isBlank()) {
+                continue;
+            }
 
+            String raw = token.trim();
+            String field;
             Sort.Direction dir = Sort.Direction.ASC;
-            if (parts.length > 1) {
-                String d = parts[1].trim();
-                if ("desc".equalsIgnoreCase(d)) dir = Sort.Direction.DESC;
-                if ("asc".equalsIgnoreCase(d)) dir = Sort.Direction.ASC;
-            }
 
-            result = result.and(Sort.by(dir, field));
-        }
-        return result;
-    }
+            if (raw.contains(",")) {
+                // "field,desc"
+                String[] parts = raw.split(",", -1);
+                field = parts[0].trim();
 
-    private List<String> normalizeSort(List<String> sort) {
-        List<String> out = new ArrayList<>();
-        int i = 0;
-        while (i < sort.size()) {
-            String a = sort.get(i);
-            if (a == null || a.isBlank()) {
-                i++;
-                continue;
-            }
-            String aa = a.trim();
+                if (parts.length > 1) {
+                    String d = parts[1].trim();
+                    if ("desc".equalsIgnoreCase(d)) {
+                        dir = Sort.Direction.DESC;
+                    }
+                }
+            } else {
+                field = raw;
 
-            if (aa.contains(",")) {
-                out.add(aa);
-                i++;
-                continue;
-            }
-
-            if (i + 1 < sort.size()) {
-                String b = sort.get(i + 1);
-                if (b != null) {
-                    String bb = b.trim();
-                    if ("asc".equalsIgnoreCase(bb) || "desc".equalsIgnoreCase(bb)) {
-                        out.add(aa + "," + bb);
-                        i += 2;
-                        continue;
+                if (i + 1 < sort.size()) {
+                    String next = sort.get(i + 1);
+                    if (next != null && !next.isBlank()) {
+                        String d = next.trim();
+                        if ("asc".equalsIgnoreCase(d) || "desc".equalsIgnoreCase(d)) {
+                            if ("desc".equalsIgnoreCase(d)) {
+                                dir = Sort.Direction.DESC;
+                            }
+                            i++;
+                        }
                     }
                 }
             }
 
-            out.add(aa);
-            i++;
+            if (field == null || field.isBlank()) {
+                continue;
+            }
+
+            result = result.and(Sort.by(dir, field));
         }
-        return out;
+
+        return result;
     }
 
     private PageProductDto toPageDto(Page<ProductDto> page) {

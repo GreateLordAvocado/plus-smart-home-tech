@@ -8,9 +8,11 @@ import ru.yandex.practicum.kafka.telemetry.analyzer.repository.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,56 @@ public class ScenarioEvaluationService {
     private final ScenarioActionLinkRepository scenarioActionLinkRepository;
     private final ConditionRepository conditionRepository;
     private final ActionRepository actionRepository;
+
+    private static final Map<ConditionType, Function<Object, Integer>> VALUE_EXTRACTORS =
+            new EnumMap<>(ConditionType.class);
+
+    static {
+        VALUE_EXTRACTORS.put(ConditionType.MOTION, payload -> {
+            if (payload instanceof MotionSensorAvro m) {
+                return m.getMotion() ? 1 : 0;
+            }
+            return null;
+        });
+
+        VALUE_EXTRACTORS.put(ConditionType.SWITCH, payload -> {
+            if (payload instanceof SwitchSensorAvro s) {
+                return s.getState() ? 1 : 0;
+            }
+            return null;
+        });
+
+        VALUE_EXTRACTORS.put(ConditionType.LUMINOSITY, payload -> {
+            if (payload instanceof LightSensorAvro l) {
+                return l.getLuminosity();
+            }
+            return null;
+        });
+
+        VALUE_EXTRACTORS.put(ConditionType.TEMPERATURE, payload -> {
+            if (payload instanceof TemperatureSensorAvro t) {
+                return t.getTemperatureC();
+            }
+            if (payload instanceof ClimateSensorAvro c) {
+                return c.getTemperatureC();
+            }
+            return null;
+        });
+
+        VALUE_EXTRACTORS.put(ConditionType.CO2LEVEL, payload -> {
+            if (payload instanceof ClimateSensorAvro c) {
+                return c.getCo2Level();
+            }
+            return null;
+        });
+
+        VALUE_EXTRACTORS.put(ConditionType.HUMIDITY, payload -> {
+            if (payload instanceof ClimateSensorAvro c) {
+                return c.getHumidity();
+            }
+            return null;
+        });
+    }
 
     @Transactional(readOnly = true)
     public List<PlannedAction> evaluate(SensorsSnapshotAvro snapshot) {
@@ -70,7 +122,7 @@ public class ScenarioEvaluationService {
                 return false;
             }
 
-            Integer sensorValue = extractValueByConditionType(sensorState.getData(), cond.getType());
+            Integer sensorValue = extractValue(sensorState.getData(), cond.getType());
             if (sensorValue == null) {
                 return false;
             }
@@ -118,52 +170,11 @@ public class ScenarioEvaluationService {
         return predicate.test(actual, expected);
     }
 
-    private Integer extractValueByConditionType(Object sensorPayload, ConditionType type) {
-        if (type == ConditionType.MOTION) {
-            if (sensorPayload instanceof MotionSensorAvro m) {
-                return m.getMotion() ? 1 : 0;
-            }
+    private Integer extractValue(Object payload, ConditionType type) {
+        Function<Object, Integer> extractor = VALUE_EXTRACTORS.get(type);
+        if (extractor == null) {
             return null;
         }
-
-        if (type == ConditionType.SWITCH) {
-            if (sensorPayload instanceof SwitchSensorAvro s) {
-                return s.getState() ? 1 : 0;
-            }
-            return null;
-        }
-
-        if (type == ConditionType.LUMINOSITY) {
-            if (sensorPayload instanceof LightSensorAvro l) {
-                return l.getLuminosity();
-            }
-            return null;
-        }
-
-        if (type == ConditionType.TEMPERATURE) {
-            if (sensorPayload instanceof TemperatureSensorAvro t) {
-                return t.getTemperatureC();
-            }
-            if (sensorPayload instanceof ClimateSensorAvro c) {
-                return c.getTemperatureC();
-            }
-            return null;
-        }
-
-        if (type == ConditionType.CO2LEVEL) {
-            if (sensorPayload instanceof ClimateSensorAvro c) {
-                return c.getCo2Level();
-            }
-            return null;
-        }
-
-        if (type == ConditionType.HUMIDITY) {
-            if (sensorPayload instanceof ClimateSensorAvro c) {
-                return c.getHumidity();
-            }
-            return null;
-        }
-
-        return null;
+        return extractor.apply(payload);
     }
 }
