@@ -1,6 +1,7 @@
 package ru.yandex.practicum.kafka.telemetry.analyzer.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.kafka.telemetry.analyzer.model.*;
@@ -12,8 +13,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScenarioEvaluationService {
@@ -27,55 +28,13 @@ public class ScenarioEvaluationService {
     private final ConditionRepository conditionRepository;
     private final ActionRepository actionRepository;
 
-    private static final Map<ConditionType, Function<Object, Integer>> VALUE_EXTRACTORS =
-            new EnumMap<>(ConditionType.class);
-
-    static {
-        VALUE_EXTRACTORS.put(ConditionType.MOTION, payload -> {
-            if (payload instanceof MotionSensorAvro m) {
-                return m.getMotion() ? 1 : 0;
-            }
-            return null;
-        });
-
-        VALUE_EXTRACTORS.put(ConditionType.SWITCH, payload -> {
-            if (payload instanceof SwitchSensorAvro s) {
-                return s.getState() ? 1 : 0;
-            }
-            return null;
-        });
-
-        VALUE_EXTRACTORS.put(ConditionType.LUMINOSITY, payload -> {
-            if (payload instanceof LightSensorAvro l) {
-                return l.getLuminosity();
-            }
-            return null;
-        });
-
-        VALUE_EXTRACTORS.put(ConditionType.TEMPERATURE, payload -> {
-            if (payload instanceof TemperatureSensorAvro t) {
-                return t.getTemperatureC();
-            }
-            if (payload instanceof ClimateSensorAvro c) {
-                return c.getTemperatureC();
-            }
-            return null;
-        });
-
-        VALUE_EXTRACTORS.put(ConditionType.CO2LEVEL, payload -> {
-            if (payload instanceof ClimateSensorAvro c) {
-                return c.getCo2Level();
-            }
-            return null;
-        });
-
-        VALUE_EXTRACTORS.put(ConditionType.HUMIDITY, payload -> {
-            if (payload instanceof ClimateSensorAvro c) {
-                return c.getHumidity();
-            }
-            return null;
-        });
-    }
+    private static final Map<Class<?>, PayloadValueExtractor<?>> EXTRACTORS_BY_CLASS = Map.of(
+            MotionSensorAvro.class, new MotionExtractor(),
+            SwitchSensorAvro.class, new SwitchExtractor(),
+            LightSensorAvro.class, new LightExtractor(),
+            TemperatureSensorAvro.class, new TemperatureExtractor(),
+            ClimateSensorAvro.class, new ClimateExtractor()
+    );
 
     @Transactional(readOnly = true)
     public List<PlannedAction> evaluate(SensorsSnapshotAvro snapshot) {
@@ -122,8 +81,12 @@ public class ScenarioEvaluationService {
                 return false;
             }
 
-            Integer sensorValue = extractValue(sensorState.getData(), cond.getType());
-            if (sensorValue == null) {
+            Integer sensorValue;
+            try {
+                sensorValue = extractValue(sensorState.getData(), cond.getType());
+            } catch (IllegalArgumentException ex) {
+                log.debug("Cannot extract value for scenario={}, sensorId={}, conditionType={}, reason={}",
+                        scenario.getName(), sensorId, cond.getType(), ex.getMessage());
                 return false;
             }
 
@@ -171,10 +134,87 @@ public class ScenarioEvaluationService {
     }
 
     private Integer extractValue(Object payload, ConditionType type) {
-        Function<Object, Integer> extractor = VALUE_EXTRACTORS.get(type);
-        if (extractor == null) {
-            return null;
+        if (payload == null) {
+            throw new IllegalArgumentException("payload is null");
         }
-        return extractor.apply(payload);
+        if (type == null) {
+            throw new IllegalArgumentException("condition type is null");
+        }
+
+        PayloadValueExtractor<Object> extractor = findExtractor(payload);
+        return extractor.extract(payload, type);
+    }
+
+    @SuppressWarnings("unchecked")
+    private PayloadValueExtractor<Object> findExtractor(Object payload) {
+        PayloadValueExtractor<?> extractor = EXTRACTORS_BY_CLASS.get(payload.getClass());
+        if (extractor == null) {
+            throw new IllegalArgumentException("unsupported payload class: " + payload.getClass().getName());
+        }
+        return (PayloadValueExtractor<Object>) extractor;
+    }
+
+    private interface PayloadValueExtractor<T> {
+        Integer extract(T payload, ConditionType type);
+    }
+
+    private static final class MotionExtractor implements PayloadValueExtractor<MotionSensorAvro> {
+        @Override
+        public Integer extract(MotionSensorAvro payload, ConditionType type) {
+            if (type != ConditionType.MOTION) {
+                throw new IllegalArgumentException("conditionType " + type + " is not supported for MotionSensorAvro");
+            }
+            return payload.getMotion() ? 1 : 0;
+        }
+    }
+
+    private static final class SwitchExtractor implements PayloadValueExtractor<SwitchSensorAvro> {
+        @Override
+        public Integer extract(SwitchSensorAvro payload, ConditionType type) {
+            if (type != ConditionType.SWITCH) {
+                throw new IllegalArgumentException("conditionType " + type + " is not supported for SwitchSensorAvro");
+            }
+            return payload.getState() ? 1 : 0;
+        }
+    }
+
+    private static final class LightExtractor implements PayloadValueExtractor<LightSensorAvro> {
+        @Override
+        public Integer extract(LightSensorAvro payload, ConditionType type) {
+            if (type != ConditionType.LUMINOSITY) {
+                throw new IllegalArgumentException("conditionType " + type + " is not supported for LightSensorAvro");
+            }
+            return payload.getLuminosity();
+        }
+    }
+
+    private static final class TemperatureExtractor implements PayloadValueExtractor<TemperatureSensorAvro> {
+        @Override
+        public Integer extract(TemperatureSensorAvro payload, ConditionType type) {
+            if (type != ConditionType.TEMPERATURE) {
+                throw new IllegalArgumentException("conditionType " + type + " is not supported for TemperatureSensorAvro");
+            }
+            return payload.getTemperatureC();
+        }
+    }
+
+    private static final class ClimateExtractor implements PayloadValueExtractor<ClimateSensorAvro> {
+        private static final Map<ConditionType, java.util.function.Function<ClimateSensorAvro, Integer>> CLIMATE_MAP =
+                new EnumMap<>(ConditionType.class);
+
+        static {
+            CLIMATE_MAP.put(ConditionType.TEMPERATURE, ClimateSensorAvro::getTemperatureC);
+            CLIMATE_MAP.put(ConditionType.CO2LEVEL, ClimateSensorAvro::getCo2Level);
+            CLIMATE_MAP.put(ConditionType.HUMIDITY, ClimateSensorAvro::getHumidity);
+        }
+
+        @Override
+        public Integer extract(ClimateSensorAvro payload, ConditionType type) {
+            var fn = CLIMATE_MAP.get(type);
+            if (fn == null) {
+                throw new IllegalArgumentException("conditionType " + type + " is not supported for ClimateSensorAvro");
+            }
+            return fn.apply(payload);
+        }
     }
 }

@@ -13,19 +13,21 @@ public class CartErrorHandler {
 
     @ExceptionHandler(NotAuthorizedUserException.class)
     public ResponseEntity<ApiErrorDto> handleAuth(NotAuthorizedUserException ex) {
-        ApiErrorDto dto = new ApiErrorDto();
-        dto.setHttpStatus(HttpStatus.UNAUTHORIZED.name());
-        dto.setMessage(ex.getMessage());
-        dto.setUserMessage(ex.getMessage());
+        ApiErrorDto dto = new ApiErrorDto(
+                HttpStatus.UNAUTHORIZED.name(),
+                "Пользователь не указан или не авторизован",
+                ex.getMessage()
+        );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(dto);
     }
 
     @ExceptionHandler(NoProductsInShoppingCartException.class)
     public ResponseEntity<ApiErrorDto> handleNoProducts(NoProductsInShoppingCartException ex) {
-        ApiErrorDto dto = new ApiErrorDto();
-        dto.setHttpStatus(HttpStatus.BAD_REQUEST.name());
-        dto.setMessage(ex.getMessage());
-        dto.setUserMessage(ex.getMessage());
+        ApiErrorDto dto = new ApiErrorDto(
+                HttpStatus.BAD_REQUEST.name(),
+                "В корзине нет запрошенных товаров",
+                ex.getMessage()
+        );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(dto);
     }
 }

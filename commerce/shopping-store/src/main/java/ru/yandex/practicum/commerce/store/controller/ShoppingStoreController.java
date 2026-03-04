@@ -1,5 +1,6 @@
 package ru.yandex.practicum.commerce.store.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -18,13 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@RequiredArgsConstructor
 public class ShoppingStoreController implements ShoppingStoreClient {
 
     private final ProductService service;
-
-    public ShoppingStoreController(ProductService service) {
-        this.service = service;
-    }
 
     @Override
     public PageProductDto getProducts(ProductCategory category, Integer page, Integer size, List<String> sort) {
@@ -76,73 +74,103 @@ public class ShoppingStoreController implements ShoppingStoreClient {
                 continue;
             }
 
-            String raw = token.trim();
-            String field;
-            Sort.Direction dir = Sort.Direction.ASC;
-
-            if (raw.contains(",")) {
-                // "field,desc"
-                String[] parts = raw.split(",", -1);
-                field = parts[0].trim();
-
-                if (parts.length > 1) {
-                    String d = parts[1].trim();
-                    if ("desc".equalsIgnoreCase(d)) {
-                        dir = Sort.Direction.DESC;
-                    }
-                }
-            } else {
-                field = raw;
-
-                if (i + 1 < sort.size()) {
-                    String next = sort.get(i + 1);
-                    if (next != null && !next.isBlank()) {
-                        String d = next.trim();
-                        if ("asc".equalsIgnoreCase(d) || "desc".equalsIgnoreCase(d)) {
-                            if ("desc".equalsIgnoreCase(d)) {
-                                dir = Sort.Direction.DESC;
-                            }
-                            i++;
-                        }
-                    }
-                }
-            }
-
-            if (field == null || field.isBlank()) {
+            SortToken parsed = parseSortToken(sort, i);
+            if (parsed == null) {
                 continue;
             }
 
-            result = result.and(Sort.by(dir, field));
+            i = parsed.nextIndex;
+
+            result = result.and(Sort.by(parsed.direction, parsed.field));
         }
 
         return result;
     }
 
+    private SortToken parseSortToken(List<String> sort, int index) {
+        String raw = sort.get(index);
+        if (raw == null) {
+            return null;
+        }
+
+        String token = raw.trim();
+        if (token.isBlank()) {
+            return null;
+        }
+
+        if (token.contains(",")) {
+            String[] parts = token.split(",", -1);
+            String field = parts[0].trim();
+            if (field.isBlank()) {
+                return null;
+            }
+
+            Sort.Direction dir = parseDirection(parts.length > 1 ? parts[1] : null);
+            return new SortToken(field, dir, index);
+        }
+
+        String field = token;
+        if (field.isBlank()) {
+            return null;
+        }
+
+        Sort.Direction dir = Sort.Direction.ASC;
+        int nextIndex = index;
+
+        if (index + 1 < sort.size()) {
+            String next = sort.get(index + 1);
+            Sort.Direction parsedDir = parseDirection(next);
+            if (parsedDir != null) {
+                dir = parsedDir;
+                nextIndex = index + 1; // съели направление
+            }
+        }
+
+        return new SortToken(field, dir, nextIndex);
+    }
+
+    private Sort.Direction parseDirection(String token) {
+        if (token == null) {
+            return null;
+        }
+        String d = token.trim();
+        if ("asc".equalsIgnoreCase(d)) {
+            return Sort.Direction.ASC;
+        }
+        if ("desc".equalsIgnoreCase(d)) {
+            return Sort.Direction.DESC;
+        }
+        return null;
+    }
+
+    private record SortToken(String field, Sort.Direction direction, int nextIndex) {
+    }
+
     private PageProductDto toPageDto(Page<ProductDto> page) {
-        PageProductDto dto = new PageProductDto();
-        dto.setContent(page.getContent());
-        dto.setTotalPages(page.getTotalPages());
-        dto.setTotalElements(page.getTotalElements());
-        dto.setSize(page.getSize());
-        dto.setNumber(page.getNumber());
-        dto.setNumberOfElements(page.getNumberOfElements());
-        dto.setFirst(page.isFirst());
-        dto.setLast(page.isLast());
-        dto.setEmpty(page.isEmpty());
-
         List<SortObject> sortObjects = toSortObjects(page.getSort());
-        dto.setSort(sortObjects);
 
-        PageableObject pageableObject = new PageableObject();
-        pageableObject.setOffset(page.getPageable().getOffset());
-        pageableObject.setPageNumber(page.getNumber());
-        pageableObject.setPageSize(page.getSize());
-        pageableObject.setPaged(page.getPageable().isPaged());
-        pageableObject.setUnpaged(page.getPageable().isUnpaged());
-        pageableObject.setSort(sortObjects);
-        dto.setPageable(pageableObject);
+        PageableObject pageableObject = PageableObject.builder()
+                .offset(page.getPageable().getOffset())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .paged(page.getPageable().isPaged())
+                .unpaged(page.getPageable().isUnpaged())
+                .sort(sortObjects)
+                .build();
 
-        return dto;
+        return PageProductDto.builder()
+                .content(page.getContent())
+                .totalPages(page.getTotalPages())
+                .totalElements(page.getTotalElements())
+                .size(page.getSize())
+                .number(page.getNumber())
+                .numberOfElements(page.getNumberOfElements())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .empty(page.isEmpty())
+                .sort(sortObjects)
+                .pageable(pageableObject)
+                .build();
     }
 
     private List<SortObject> toSortObjects(Sort sort) {
@@ -152,13 +180,13 @@ public class ShoppingStoreController implements ShoppingStoreClient {
 
         List<SortObject> out = new ArrayList<>();
         for (Sort.Order o : sort) {
-            SortObject so = new SortObject();
-            so.setProperty(o.getProperty());
-            so.setDirection(o.getDirection().name());
-            so.setAscending(o.isAscending());
-            so.setIgnoreCase(o.isIgnoreCase());
-            so.setNullHandling(o.getNullHandling().name());
-            out.add(so);
+            out.add(SortObject.builder()
+                    .property(o.getProperty())
+                    .direction(o.getDirection().name())
+                    .ascending(o.isAscending())
+                    .ignoreCase(o.isIgnoreCase())
+                    .nullHandling(o.getNullHandling().name())
+                    .build());
         }
         return out;
     }

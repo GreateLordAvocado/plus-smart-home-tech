@@ -1,5 +1,6 @@
 package ru.yandex.practicum.commerce.store.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,15 +17,11 @@ import ru.yandex.practicum.commerce.store.repo.ProductRepository;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository repo;
     private final ProductMapper mapper;
-
-    public ProductService(ProductRepository repo, ProductMapper mapper) {
-        this.repo = repo;
-        this.mapper = mapper;
-    }
 
     @Transactional(readOnly = true)
     public Page<ProductDto> findActiveByCategory(ProductCategory category, Pageable pageable) {
@@ -46,7 +43,7 @@ public class ProductService {
     public ProductDto update(ProductDto dto) {
         UUID id = dto.getProductId();
         if (id == null) {
-            throw new ProductNotFoundException(null);
+            throw new IllegalArgumentException("productId must be provided for update");
         }
 
         ProductEntity entity = repo.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
