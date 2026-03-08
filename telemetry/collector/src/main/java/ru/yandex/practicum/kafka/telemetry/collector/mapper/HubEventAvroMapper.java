@@ -1,9 +1,28 @@
 package ru.yandex.practicum.kafka.telemetry.collector.mapper;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.kafka.telemetry.collector.dto.hub.*;
-import ru.yandex.practicum.kafka.telemetry.event.*;
+import ru.yandex.practicum.grpc.telemetry.event.ConditionOperation;
+import ru.yandex.practicum.grpc.telemetry.event.ConditionType;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceAddedEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceRemovedEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceType;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.ScenarioAddedEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.ScenarioConditionProto;
+import ru.yandex.practicum.grpc.telemetry.event.ScenarioRemovedEventProto;
+
+import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
+import ru.yandex.practicum.kafka.telemetry.event.ConditionOperationAvro;
+import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
+import ru.yandex.practicum.kafka.telemetry.event.DeviceActionAvro;
+import ru.yandex.practicum.kafka.telemetry.event.DeviceAddedEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.DeviceRemovedEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.DeviceTypeAvro;
+import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.ScenarioAddedEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro;
+import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
 
 import java.time.Instant;
 import java.util.List;
@@ -11,87 +30,89 @@ import java.util.List;
 @Component
 public class HubEventAvroMapper {
 
-    public HubEventAvro toAvro(HubEvent dto) {
-        Object payload = switch (dto.getType()) {
-            case DEVICE_ADDED -> toDeviceAdded((DeviceAddedEvent) dto);
-            case DEVICE_REMOVED -> toDeviceRemoved((DeviceRemovedEvent) dto);
-            case SCENARIO_ADDED -> toScenarioAdded((ScenarioAddedEvent) dto);
-            case SCENARIO_REMOVED -> toScenarioRemoved((ScenarioRemovedEvent) dto);
+    public HubEventAvro toAvro(HubEventProto event) {
+        final Object payload = switch (event.getPayloadCase()) {
+            case DEVICE_ADDED -> mapDeviceAdded(event.getDeviceAdded());
+            case DEVICE_REMOVED -> mapDeviceRemoved(event.getDeviceRemoved());
+            case SCENARIO_ADDED -> mapScenarioAdded(event.getScenarioAdded());
+            case SCENARIO_REMOVED -> mapScenarioRemoved(event.getScenarioRemoved());
+            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("HubEvent payload is not set");
         };
 
-        long ts = dto.getTimestamp() != null
-                ? dto.getTimestamp().toEpochMilli()
+        final long ts = event.hasTimestamp()
+                ? event.getTimestamp().getSeconds() * 1000L + event.getTimestamp().getNanos() / 1_000_000L
                 : Instant.now().toEpochMilli();
 
         return HubEventAvro.newBuilder()
-                .setHubId(dto.getHubId())
+                .setHubId(event.getHubId())
                 .setTimestamp(ts)
                 .setPayload(payload)
                 .build();
     }
 
-    private DeviceAddedEventAvro toDeviceAdded(DeviceAddedEvent e) {
+    private DeviceAddedEventAvro mapDeviceAdded(DeviceAddedEventProto e) {
+        DeviceType t = e.getType();
         return DeviceAddedEventAvro.newBuilder()
                 .setId(e.getId())
-                .setType(DeviceTypeAvro.valueOf(e.getDeviceType().name()))
+                .setType(DeviceTypeAvro.valueOf(t.name()))
                 .build();
     }
 
-    private DeviceRemovedEventAvro toDeviceRemoved(DeviceRemovedEvent e) {
+    private DeviceRemovedEventAvro mapDeviceRemoved(DeviceRemovedEventProto e) {
         return DeviceRemovedEventAvro.newBuilder()
                 .setId(e.getId())
                 .build();
     }
 
-    private ScenarioAddedEventAvro toScenarioAdded(ScenarioAddedEvent e) {
+    private ScenarioAddedEventAvro mapScenarioAdded(ScenarioAddedEventProto e) {
         return ScenarioAddedEventAvro.newBuilder()
                 .setName(e.getName())
-                .setConditions(mapConditions(e.getConditions()))
-                .setActions(mapActions(e.getActions()))
+                .setConditions(mapConditions(e.getConditionsList()))
+                .setActions(mapActions(e.getActionsList()))
                 .build();
     }
 
-    private ScenarioRemovedEventAvro toScenarioRemoved(ScenarioRemovedEvent e) {
+    private ScenarioRemovedEventAvro mapScenarioRemoved(ScenarioRemovedEventProto e) {
         return ScenarioRemovedEventAvro.newBuilder()
                 .setName(e.getName())
                 .build();
     }
 
-    private List<ScenarioConditionAvro> mapConditions(List<ScenarioCondition> conditions) {
-        return conditions.stream().map(this::toCondition).toList();
+    private List<ScenarioConditionAvro> mapConditions(List<ScenarioConditionProto> conditions) {
+        return conditions.stream().map(this::mapCondition).toList();
     }
 
-    private ScenarioConditionAvro toCondition(ScenarioCondition c) {
+    private ScenarioConditionAvro mapCondition(ScenarioConditionProto c) {
+        ConditionType type = c.getType();
+        ConditionOperation op = c.getOperation();
+
         return ScenarioConditionAvro.newBuilder()
                 .setSensorId(c.getSensorId())
-                .setType(ConditionTypeAvro.valueOf(c.getType().name()))
-                .setOperation(ConditionOperationAvro.valueOf(c.getOperation().name()))
-                .setValue(mapUnionValue(c.getValue()))
+                .setType(ConditionTypeAvro.valueOf(type.name()))
+                .setOperation(ConditionOperationAvro.valueOf(op.name()))
+                .setValue(mapConditionValue(c))
                 .build();
     }
 
-    private Object mapUnionValue(JsonNode value) {
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (value.isBoolean()) {
-            return value.booleanValue();
-        }
-        if (value.isInt() || value.isLong()) {
-            return value.intValue();
-        }
-        throw new IllegalArgumentException("Unsupported condition value type: " + value.getNodeType());
+    private Object mapConditionValue(ScenarioConditionProto c) {
+        return switch (c.getValueCase()) {
+            case INT_VALUE -> Integer.valueOf(c.getIntValue());
+            case BOOL_VALUE -> Boolean.valueOf(c.getBoolValue());
+            case VALUE_NOT_SET -> null;
+        };
     }
 
-    private List<DeviceActionAvro> mapActions(List<DeviceAction> actions) {
-        return actions.stream().map(this::toAction).toList();
+    private List<DeviceActionAvro> mapActions(List<DeviceActionProto> actions) {
+        return actions.stream().map(this::mapAction).toList();
     }
 
-    private DeviceActionAvro toAction(DeviceAction a) {
+    private DeviceActionAvro mapAction(DeviceActionProto a) {
+        Integer value = a.hasValue() ? Integer.valueOf(a.getValue()) : null;
+
         return DeviceActionAvro.newBuilder()
                 .setSensorId(a.getSensorId())
                 .setType(ActionTypeAvro.valueOf(a.getType().name()))
-                .setValue(a.getValue())
+                .setValue(value)
                 .build();
     }
 }
