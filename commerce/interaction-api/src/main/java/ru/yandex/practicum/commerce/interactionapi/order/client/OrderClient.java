@@ -48,4 +48,4 @@ public interface OrderClient {
 
     @PostMapping("/assembly/failed")
     OrderDto assemblyFailed(@RequestBody OrderDto orderDto);
-}
+} // а где?
