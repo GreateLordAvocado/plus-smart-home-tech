@@ -9,6 +9,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import ru.yandex.practicum.commerce.interactionapi.delivery.dto.DeliveryState;
 import ru.yandex.practicum.commerce.interactionapi.warehouse.dto.AddressDto;
 
@@ -16,6 +19,9 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "deliveries")
+@Getter
+@Setter
+@NoArgsConstructor
 public class DeliveryEntity {
 
     @Id
@@ -48,47 +54,4 @@ public class DeliveryEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_state", nullable = false)
     private DeliveryState deliveryState;
-
-    public DeliveryEntity() {
-    }
-
-    public UUID getDeliveryId() {
-        return deliveryId;
-    }
-
-    public void setDeliveryId(UUID deliveryId) {
-        this.deliveryId = deliveryId;
-    }
-
-    public UUID getOrderId() {
-        return orderId;
-    }
-
-    public void setOrderId(UUID orderId) {
-        this.orderId = orderId;
-    }
-
-    public AddressDto getFromAddress() {
-        return fromAddress;
-    }
-
-    public void setFromAddress(AddressDto fromAddress) {
-        this.fromAddress = fromAddress;
-    }
-
-    public AddressDto getToAddress() {
-        return toAddress;
-    }
-
-    public void setToAddress(AddressDto toAddress) {
-        this.toAddress = toAddress;
-    }
-
-    public DeliveryState getDeliveryState() {
-        return deliveryState;
-    }
-
-    public void setDeliveryState(DeliveryState deliveryState) {
-        this.deliveryState = deliveryState;
-    }
 }

@@ -16,6 +16,7 @@ import ru.yandex.practicum.commerce.interactionapi.warehouse.client.WarehouseFei
 import ru.yandex.practicum.commerce.interactionapi.warehouse.dto.AddressDto;
 import ru.yandex.practicum.commerce.interactionapi.warehouse.dto.AssemblyProductsForOrderRequest;
 import ru.yandex.practicum.commerce.interactionapi.warehouse.dto.BookedProductsDto;
+import ru.yandex.practicum.commerce.order.exception.InvalidDeliveryAddressException;
 import ru.yandex.practicum.commerce.order.exception.NoOrderFoundException;
 import ru.yandex.practicum.commerce.order.model.OrderEntity;
 import ru.yandex.practicum.commerce.order.repo.OrderRepository;
@@ -250,7 +251,14 @@ public class OrderService {
 
     private void applyDeliveryAddress(OrderEntity entity, AddressDto addressDto) {
         if (addressDto == null) {
-            return;
+            throw new InvalidDeliveryAddressException("Delivery address must not be null");
+        }
+
+        if (addressDto.getCountry() == null
+                || addressDto.getCity() == null
+                || addressDto.getStreet() == null
+                || addressDto.getHouse() == null) {
+            throw new InvalidDeliveryAddressException("Delivery address contains empty required fields");
         }
 
         entity.setDeliveryCountry(addressDto.getCountry());
