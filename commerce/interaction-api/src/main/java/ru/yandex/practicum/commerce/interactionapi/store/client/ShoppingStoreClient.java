@@ -1,7 +1,12 @@
 package ru.yandex.practicum.commerce.interactionapi.store.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.PageProductDto;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductCategory;
 import ru.yandex.practicum.commerce.interactionapi.store.dto.ProductDto;
@@ -10,8 +15,7 @@ import ru.yandex.practicum.commerce.interactionapi.store.dto.QuantityState;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "shopping-store")
-@RequestMapping("/api/v1/shopping-store")
+@FeignClient(name = "shopping-store", path = "/api/v1/shopping-store")
 public interface ShoppingStoreClient {
 
     @GetMapping
